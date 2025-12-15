@@ -2,138 +2,222 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#18181b">
     <title>Stagg EKG Pro Controller</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        zinc: {
+                            850: '#1f1f23',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+<body class="bg-zinc-950 text-zinc-100 font-sans min-h-screen selection:bg-blue-500 selection:text-white pb-12">
 
-    <div class="max-w-2xl mx-auto p-4">
+    <div class="max-w-md mx-auto px-4 py-6 sm:py-10">
+        
         <!-- Header -->
-        <header class="mb-8 flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-900">☕ Stagg EKG Pro</h1>
-            <div class="flex items-center gap-2">
-                <button onclick="fetchState()" id="refresh-btn" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition" title="Refresh State">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
-                </button>
-                <span id="connection-status" class="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800">
-                    Disconnected
-                </span>
+        <header class="mb-10 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center shadow-lg border border-zinc-700/50">
+                    <span class="text-xl">☕</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white leading-tight">EKG Pro</h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] transition-colors duration-500"></div>
+                        <p id="connection-status" class="text-xs font-medium text-zinc-400 tracking-wide uppercase">Disconnected</p>
+                    </div>
+                </div>
             </div>
+            <button id="refresh-btn" class="hidden text-zinc-500 hover:text-white transition-colors p-2" title="Refresh">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+            </button>
         </header>
 
         <!-- Scan & Connect Section -->
-        <div id="scan-section" class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">Device Connection</h2>
-            <div class="flex gap-4 mb-4">
-                <button onclick="scanDevices()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-                    Scan for Devices
+        <div id="scan-section" class="bg-zinc-900/50 border border-zinc-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-2xl mb-6 ring-1 ring-white/5">
+            <div class="text-center py-6">
+                <div class="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 text-zinc-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                </div>
+                <h2 class="text-xl font-semibold text-white mb-2">Connect Device</h2>
+                <div id="scan-results" class="space-y-2 mb-4"></div> <!-- Container for scan results -->
+                <p class="text-sm text-zinc-400 mb-6 leading-relaxed max-w-[260px] mx-auto">
+                    Click to scan for available EKG Pro kettles on your local network/BLE.
+                </p>
+                <button id="connect-btn" class="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-2xl transition-all active:scale-[0.98] shadow-lg shadow-white/10">
+                    Scan & Connect
                 </button>
-                <button onclick="disconnect()" id="disconnect-btn" class="hidden bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
+                <div id="loading-scan" class="hidden text-xs text-zinc-500 mt-2 italic">Scanning...</div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden space-y-4">
+            
+            <!-- Disconnect Action (Small) -->
+            <div class="flex justify-end">
+                 <button id="disconnect-btn" class="hidden text-xs font-medium text-red-400 hover:text-red-300 transition-colors px-2 py-1">
                     Disconnect
                 </button>
             </div>
-            
-            <div id="scan-results" class="space-y-2">
-                <!-- Device list will appear here -->
-            </div>
-            
-            <div id="loading-scan" class="hidden text-gray-500 italic mt-2">Scanning...</div>
-        </div>
 
-        <!-- Control Dashboard (Hidden until connected) -->
-        <div id="dashboard" class="hidden space-y-6">
-            
-            <!-- Temperature Control -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Target Temperature</h2>
-                <div class="flex flex-col items-center">
-                    <div class="text-6xl font-bold text-blue-600 mb-2">
-                        <span id="display-target-temp">--</span><span class="text-3xl text-gray-400">°C</span>
+            <!-- Main Temperature Control Card -->
+            <div class="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+                <!-- Background Glow -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+
+                <div class="relative z-10 flex flex-col items-center">
+                    <h2 class="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-6">Target Temperature</h2>
+                    
+                    <div class="relative mb-8">
+                        <div class="text-7xl font-light text-white tracking-tighter tabular-nums" id="display-target-temp">--</div>
+                        <div class="absolute -top-2 -right-6 text-2xl text-zinc-600 font-light">°C</div>
+                    </div>
+
+                    <div class="w-full px-2 mb-2">
+                        <input type="range" id="temp-slider" min="40" max="100" step="1" 
+                               class="slider-track w-full h-12 bg-transparent cursor-pointer appearance-none focus:outline-none">
                     </div>
                     
-                    <input type="range" id="temp-slider" min="40" max="100" step="1" 
-                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-6"
-                           oninput="updateTempDisplay(this.value)"
-                           onchange="setTemperature(this.value)">
-                    
-                    <div class="flex justify-between w-full px-2 text-sm text-gray-500">
+                    <div class="flex justify-between w-full px-4 text-xs font-medium text-zinc-600 font-mono">
                         <span>40°C</span>
                         <span>100°C</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Schedule -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Schedule</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Mode</label>
-                        <select id="schedule-mode" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
-                            <option value="off">Off</option>
-                            <option value="once">Once</option>
-                            <option value="daily">Daily</option>
+            <!-- Schedule Card -->
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-lg">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <h2 class="text-sm font-semibold text-white">Auto-Start Schedule</h2>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- Mode Toggle -->
+                    <div class="bg-zinc-950/50 p-1.5 rounded-xl flex relative">
+                         <select id="schedule-mode" class="w-full bg-transparent text-sm font-medium text-zinc-300 focus:outline-none focus:ring-0 border-none p-2 appearance-none text-center">
+                            <option value="off">Schedule: Off</option>
+                            <option value="once">Run Once</option>
+                            <option value="daily">Run Daily</option>
                         </select>
+                        <div class="absolute right-3 top-3 pointer-events-none text-zinc-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                        <input type="time" id="sched-time" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border text-lg" value="08:00">
+
+                    <!-- Time & Temp Grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-zinc-950/50 rounded-2xl p-4 border border-zinc-800/50">
+                            <label class="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Time</label>
+                            <input type="time" id="sched-time" value="08:00" class="w-full bg-transparent text-xl font-light text-white border-none p-0 focus:ring-0 appearance-none time-input-custom">
+                        </div>
+                        <div class="bg-zinc-950/50 rounded-2xl p-4 border border-zinc-800/50">
+                            <label class="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Temp</label>
+                            <div class="flex items-baseline gap-1">
+                                <span id="display-schedule-temp" class="text-xl font-light text-white">--</span>
+                                <span class="text-sm text-zinc-600">°C</span>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Target Temp: <span id="display-schedule-temp">--</span>°C</label>
+
+                    <!-- Hidden Range input for Schedule Temp (controlled via UI) -->
+                     <div class="pt-2">
                         <input type="range" id="schedule-temp" min="40" max="100" step="1" 
-                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                               oninput="document.getElementById('display-schedule-temp').innerText = this.value">
-                        <div class="flex justify-between w-full px-1 text-xs text-gray-400">
-                            <span>40°C</span>
-                            <span>100°C</span>
-                        </div>
+                               class="slider-track-small w-full h-8 bg-transparent cursor-pointer appearance-none focus:outline-none">
                     </div>
-                    <div class="flex items-end flex-col">
-                        <button onclick="saveSchedule()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
-                            Save Schedule
-                        </button>
-                        <span id="schedule-status" class="text-xs text-green-600 font-semibold mt-1 opacity-0 transition-opacity duration-300">Saved!</span>
-                    </div>
+
+                    <button id="save-schedule-btn" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                        <span>Save Schedule</span>
+                    </button>
+                     <p id="schedule-status" class="text-center text-[10px] text-green-500 font-medium h-4 opacity-0 transition-opacity">Saved Successfully</p>
                 </div>
             </div>
 
-            <!-- Settings -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Settings</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Hold Time (Minutes)</label>
-                        <div class="flex gap-2">
-                            <select id="hold-time" class="flex-1 border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
-                                <option value="0">Off</option>
-                                <option value="15">15</option>
-                                <option value="30">30</option>
-                                <option value="45">45</option>
-                                <option value="60">60</option>
-                            </select>
-                            <button onclick="setHold()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition">
-                                Set
-                            </button>
-                        </div>
+            <!-- Settings / Info Grid -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Hold Time -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 shadow-lg">
+                    <label class="block text-[10px] uppercase tracking-wider text-zinc-500 mb-3">Hold Time</label>
+                    <div class="flex flex-col gap-3">
+                        <select id="hold-time" class="bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg block w-full p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="0">Off</option>
+                            <option value="15">15 min</option>
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                            <option value="60">60 min</option>
+                        </select>
+                        <button id="set-hold-btn" class="text-xs bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-lg transition">Set</button>
                     </div>
-                    
+                </div>
+
+                <!-- Info -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 shadow-lg flex flex-col justify-between">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Device Info</label>
-                        <div class="text-sm text-gray-600 space-y-1">
-                            <p>Altitude: <span id="info-altitude">--</span> m</p>
-                            <p>Language: <span id="info-language">--</span></p>
-                            <p>Clock: <span id="info-clock">--:--</span></p>
+                        <label class="block text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Device Info</label>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-zinc-600">Alt</span>
+                                <span class="text-zinc-300"><span id="info-altitude">--</span>m</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-zinc-600">Clock</span>
+                                <span class="text-zinc-300" id="info-clock">--:--</span>
+                            </div>
+                             <div class="flex justify-between text-xs">
+                                <span class="text-zinc-600">Lang</span>
+                                <span class="text-zinc-300 truncate max-w-[50px]" id="info-language">--</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
     <script src="/static/app.js"></script>
+    <script>
+        // Visual updates script
+        const statusEl = document.getElementById('connection-status');
+        const dotEl = document.getElementById('status-dot');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    const text = statusEl.innerText.toLowerCase();
+                    if (text.includes('connected') && !text.includes('dis')) {
+                        dotEl.classList.remove('bg-red-500', 'shadow-[0_0_8px_rgba(239,68,68,0.6)]');
+                        dotEl.classList.add('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]');
+                    } else {
+                        dotEl.classList.remove('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]');
+                        dotEl.classList.add('bg-red-500', 'shadow-[0_0_8px_rgba(239,68,68,0.6)]');
+                    }
+                }
+            });
+        });
+        if (statusEl) observer.observe(statusEl, { childList: true, subtree: true, characterData: true });
+    </script>
 </body>
 </html>
