@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#27272a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#09090b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background: Rounded Square (Squircle-ish) -->
+  <rect width="512" height="512" rx="128" fill="url(#grad)"/>
+  
+  <!-- Kettle Icon -->
+  <g transform="translate(56, 56) scale(0.78)">
+      <!-- Body -->
+      <path fill="#e4e4e7" d="M140 120 L372 120 L360 380 C360 395 345 410 330 410 L182 410 C167 410 152 395 152 380 Z"/>
+      
+      <!-- Lid Knob -->
+      <rect x="236" y="80" width="40" height="40" rx="4" fill="#e4e4e7"/>
+      
+      <!-- Handle -->
+      <path fill="#e4e4e7" d="M145 160 L80 160 C65 160 55 170 55 185 L55 345 C55 360 65 370 80 370 L155 370 L155 330 L95 330 L95 200 L145 200 Z"/>
+      
+      <!-- Spout (Gooseneck) -->
+      <path fill="#e4e4e7" d="M365 360 C420 360 460 320 460 220 L420 220 C420 290 395 320 365 320 Z"/>
+      <path fill="#e4e4e7" d="M460 220 L470 210 L430 210 L420 220 Z"/>
+  </g>
+</svg>

@@ -1,7 +1,7 @@
-const CACHE_NAME = 'stagg-ekg-v6';
+const CACHE_NAME = 'stagg-ekg-v7';
 const ASSETS = [
     './index.html',
-    './icon.svg',
+    './icon-v2.svg',
     './manifest.json',
     './style.css',
     './app.js'
