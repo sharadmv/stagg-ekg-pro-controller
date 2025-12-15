@@ -59,9 +59,11 @@
         </header>
 
         <!-- Scan & Connect Section -->
-        <div id="scan-section" class="bg-zinc-900/50 border border-zinc-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-2xl mb-6 ring-1 ring-white/5">
-            <div class="text-center py-6">
-                <div class="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 text-zinc-500">
+        <div id="scan-section" class="bg-zinc-900/50 border border-zinc-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-2xl mb-6 ring-1 ring-white/5 relative overflow-hidden">
+            
+            <!-- Idle / Scan State -->
+            <div id="scan-content" class="text-center py-6 transition-opacity duration-300">
+                <div class="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 text-zinc-500 shadow-inner border border-zinc-700/30">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                 </div>
                 <h2 class="text-xl font-semibold text-white mb-2">Connect Device</h2>
@@ -73,6 +75,23 @@
                 </button>
                 <div id="error-msg" class="hidden mt-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl text-left"></div>
             </div>
+
+            <!-- Connecting / Loading State -->
+            <div id="connecting-content" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/95 backdrop-blur-sm z-10 transition-opacity duration-300">
+                <div class="relative mb-6">
+                    <!-- Radar Ping -->
+                    <div class="absolute inset-0 rounded-full bg-blue-500/30 animate-ping"></div>
+                    <div class="absolute inset-0 rounded-full bg-blue-500/20 animate-pulse delay-75"></div>
+                    
+                    <!-- Center Icon -->
+                    <div class="relative w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.5)] z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-1">Connecting...</h3>
+                <p id="connecting-status" class="text-xs text-blue-400 font-mono tracking-wide uppercase">Establishing Link</p>
+            </div>
+
         </div>
 
         <!-- Dashboard -->
