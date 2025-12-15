@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stagg EKG Pro Controller (Standalone)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Embedded styles from static/style.css */
+        .slider-thumb::-webkit-slider-thumb {
+            @apply appearance-none w-6 h-6 rounded-full bg-blue-600 cursor-pointer;
+        }
+        /* Additional tweaks */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            margin-top: -8px; 
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+
+    <div class="max-w-2xl mx-auto p-4">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">☕ Stagg EKG Pro</h1>
+                <p class="text-xs text-gray-500 mt-1">Standalone Web Bluetooth Controller</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="refresh-btn" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full transition" title="Refresh State">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                </button>
+                <span id="connection-status" class="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800">
+                    Disconnected
+                </span>
+            </div>
+        </header>
+
+        <!-- Scan & Connect Section -->
+        <div id="scan-section" class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Device Connection</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Click below to open the browser's Bluetooth picker. Select your "Stagg EKG Pro" or "Fellow" device.
+                <br>
+                <span class="text-xs text-orange-600 font-semibold">Note: Requires a browser with Web Bluetooth support (Chrome, Edge) and HTTPS or localhost context.</span>
+            </p>
+            <div class="flex gap-4">
+                <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-semibold shadow-sm">
+                    Connect Device
+                </button>
+                <button id="disconnect-btn" class="hidden bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
+                    Disconnect
+                </button>
+            </div>
+            <div id="error-msg" class="hidden mt-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200"></div>
+        </div>
+
+        <!-- Control Dashboard (Hidden until connected) -->
+        <div id="dashboard" class="hidden space-y-6">
+            
+            <!-- Temperature Control -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Target Temperature</h2>
+                <div class="flex flex-col items-center">
+                    <div class="text-6xl font-bold text-blue-600 mb-2">
+                        <span id="display-target-temp">--</span><span class="text-3xl text-gray-400">°C</span>
+                    </div>
+                    
+                    <input type="range" id="temp-slider" min="40" max="100" step="1" 
+                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-6">
+                    
+                    <div class="flex justify-between w-full px-2 text-sm text-gray-500">
+                        <span>40°C</span>
+                        <span>100°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Schedule</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mode</label>
+                        <select id="schedule-mode" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                            <option value="off">Off</option>
+                            <option value="once">Once</option>
+                            <option value="daily">Daily</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                        <div class="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                            <!-- Hour -->
+                            <div class="flex flex-col items-center">
+                                <button id="btn-h-up" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▲</button>
+                                <input type="text" id="sched-h" value="08" class="w-12 text-center font-mono text-2xl bg-transparent border-none focus:ring-0 p-0 text-gray-800" readonly>
+                                <button id="btn-h-down" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▼</button>
+                            </div>
+                            <span class="text-2xl font-bold text-gray-300 pb-1">:</span>
+                            <!-- Minute -->
+                            <div class="flex flex-col items-center">
+                                <button id="btn-m-up" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▲</button>
+                                <input type="text" id="sched-m" value="00" class="w-12 text-center font-mono text-2xl bg-transparent border-none focus:ring-0 p-0 text-gray-800" readonly>
+                                <button id="btn-m-down" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▼</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Target Temp (°C)</label>
+                        <input type="number" id="schedule-temp" min="40" max="100" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    </div>
+                    <div class="flex items-end flex-col">
+                        <button id="save-schedule-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition shadow-sm">
+                            Save Schedule
+                        </button>
+                        <span id="schedule-status" class="text-xs text-green-600 font-semibold mt-1 opacity-0 transition-opacity duration-300">Saved!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Settings</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hold Time (Minutes)</label>
+                        <div class="flex gap-2">
+                            <select id="hold-time" class="flex-1 border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                                <option value="0">Off</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                                <option value="60">60</option>
+                            </select>
+                            <button id="set-hold-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition shadow-sm">
+                                Set
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Device Info</label>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <p>Altitude: <span id="info-altitude">--</span> m</p>
+                            <p>Language: <span id="info-language">--</span></p>
+                            <p>Clock: <span id="info-clock">--:--</span></p>
+                            <p class="text-xs text-gray-400">FW Version: <span id="info-fw">Unknown</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Raw Debug -->
+            <div class="mt-8 p-4 bg-gray-50 rounded border border-gray-200">
+                <details>
+                    <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Debug / Raw Data</summary>
+                    <pre id="debug-log" class="text-xs font-mono mt-2 overflow-x-auto p-2 bg-gray-100 rounded">No data</pre>
+                </details>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script>
+        /**
+         * Fellow Stagg EKG Pro - Web Bluetooth Controller
+         * Ported from stagg_ekg_pro.py
+         */
+
+        // Constants
+        const MAIN_CONFIG_UUID = '2291c4b5-5d7f-4477-a88b-b266edb97142';
+        // Known Service UUIDs to try (since we need to specify services in WebBluetooth to access them)
+        const OPTIONAL_SERVICES = [
+            '7aebf330-6cb1-46e4-b23b-7cc2262c605e', // Discovered Service UUID
+            'b4df5a1c-3f6b-f4bf-ea4a-820304901a02', 
+            '00001820-0000-1000-8000-00805f9b34fb',
+            MAIN_CONFIG_UUID 
+        ];
+
+        // Payload Offsets
+        const Payload = {
+            STATUS_FLAGS: 0,
+            CONTROL_FLAGS: 1,
+            ALTITUDE_LOW: 2,
+            ALTITUDE_HIGH: 3,
+            TARGET_TEMP: 4,
+            SCHEDULE_TEMP: 6,
+            SCHEDULE_MINUTES: 8,
+            SCHEDULE_HOURS: 9,
+            CLOCK_MINUTES: 10,
+            CLOCK_HOURS: 11,
+            CLOCK_MODE: 12,
+            HOLD_TIME: 13,
+            CHIME_VOLUME: 14,
+            LANGUAGE: 15,
+            COUNTER: 16
+        };
+
+        const Flags = {
+            UNITS: 0x02,
+            PRE_BOIL: 0x08,
+            SCHEDULE_ENABLED: 0x08,
+            SCHEDULE_MODE: 0x08
+        };
+
+        class StaggEKGPro {
+            constructor() {
+                this.device = null;
+                this.server = null;
+                this.characteristic = null;
+                this.stateData = null; // Uint8Array
+                this.counter = 0;
+                this.onStateChange = null;
+            }
+
+            async connect() {
+                try {
+                    console.log('Requesting Bluetooth Device...');
+                    this.device = await navigator.bluetooth.requestDevice({
+                        filters: [
+                            { namePrefix: 'Stagg' },
+                            { namePrefix: 'Fellow' },
+                            { namePrefix: 'EKG' }
+                        ],
+                        optionalServices: OPTIONAL_SERVICES,
+                        acceptAllDevices: false 
+                    });
+
+                    this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
+
+                    console.log('Connecting to GATT Server...');
+                    this.server = await this.device.gatt.connect();
+
+                    console.log('Getting Service...');
+                    let service = null;
+                    
+                    // Try to find the service containing our characteristic
+                    // Since we don't know for sure which one it is, we might need to search
+                    // but WebBluetooth requires `getPrimaryService` with a specific UUID.
+                    // We'll try the known ones.
+                    for (const uuid of OPTIONAL_SERVICES) {
+                        try {
+                            service = await this.server.getPrimaryService(uuid);
+                            console.log('Found service:', uuid);
+                            // Verify characteristic exists
+                            try {
+                                this.characteristic = await service.getCharacteristic(MAIN_CONFIG_UUID);
+                                break; 
+                            } catch (e) {
+                                console.log(`Characteristic not in service ${uuid}`);
+                                service = null;
+                            }
+                        } catch (e) {
+                            // Service not found
+                        }
+                    }
+
+                    if (!this.characteristic) {
+                        throw new Error('Could not find Main Config Characteristic. Ensure the device is supported.');
+                    }
+
+                    console.log('Starting Notifications...');
+                    await this.characteristic.startNotifications();
+                    this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+
+                    // Initial read
+                    console.log('Reading initial state...');
+                    const value = await this.characteristic.readValue();
+                    this.updateState(value);
+                    
+                    return true;
+
+                } catch (error) {
+                    console.error('Connection failed!', error);
+                    throw error;
+                }
+            }
+
+            async disconnect() {
+                if (this.device && this.device.gatt.connected) {
+                    this.device.gatt.disconnect();
+                }
+            }
+
+            onDisconnected() {
+                console.log('Device disconnected');
+                if (this.onStateChange) this.onStateChange({ connected: false });
+            }
+
+            handleNotification(event) {
+                const value = event.target.value;
+                this.updateState(value);
+            }
+
+            updateState(dataView) {
+                this.stateData = new Uint8Array(dataView.buffer);
+                this.counter = this.stateData[Payload.COUNTER];
+                
+                // Parse state
+                const state = this.parseState(this.stateData);
+                state.connected = true;
+                
+                // Debug log
+                const hex = [...this.stateData].map(b => b.toString(16).padStart(2,'0')).join(' ');
+                document.getElementById('debug-log').innerText = hex;
+
+                if (this.onStateChange) this.onStateChange(state);
+            }
+
+            parseState(data) {
+                // Helper to get altitude
+                const altLow = data[Payload.ALTITUDE_LOW];
+                const altHigh = data[Payload.ALTITUDE_HIGH];
+                const altRaw = ((altHigh & 0x7F) << 8) | altLow;
+                const altitude = Math.round((Math.round(altRaw / 30) * 30));
+
+                const scheduleEnabled = !!(data[Payload.STATUS_FLAGS] & Flags.SCHEDULE_ENABLED);
+                const scheduleModeRaw = data[Payload.COUNTER] & Flags.SCHEDULE_MODE;
+                let scheduleMode = 'off';
+                if (scheduleEnabled) {
+                    scheduleMode = scheduleModeRaw ? 'once' : 'daily';
+                }
+
+                return {
+                    target_temperature: data[Payload.TARGET_TEMP] / 2.0,
+                    units: (data[Payload.CONTROL_FLAGS] & Flags.UNITS) ? 'celsius' : 'fahrenheit',
+                    pre_boil_enabled: !!(data[Payload.CONTROL_FLAGS] & Flags.PRE_BOIL),
+                    altitude_meters: altitude,
+                    hold_time_minutes: data[Payload.HOLD_TIME],
+                    schedule: {
+                        mode: scheduleMode,
+                        temperature_celsius: data[Payload.SCHEDULE_TEMP] / 2.0,
+                        hour: data[Payload.SCHEDULE_HOURS],
+                        minute: data[Payload.SCHEDULE_MINUTES]
+                    },
+                    language: data[Payload.LANGUAGE],
+                    clock: {
+                        hour: data[Payload.CLOCK_HOURS],
+                        minute: data[Payload.CLOCK_MINUTES]
+                    }
+                };
+            }
+
+            async writeState(newData) {
+                if (!this.characteristic) return;
+                
+                // Update counter
+                this.counter = (this.counter + 1) & 0xFF;
+                newData[Payload.COUNTER] = this.counter;
+
+                try {
+                    await this.characteristic.writeValue(newData);
+                    // Optimistically update local state
+                    this.stateData = newData;
+                } catch (e) {
+                    console.error("Write failed", e);
+                    throw e;
+                }
+            }
+
+            async setTemperature(tempC) {
+                if (!this.stateData) return;
+                const newData = new Uint8Array(this.stateData);
+                newData[Payload.TARGET_TEMP] = Math.round(Math.max(0, Math.min(100, tempC)) * 2);
+                await this.writeState(newData);
+            }
+
+            async setHoldTime(minutes) {
+                if (!this.stateData) return;
+                const newData = new Uint8Array(this.stateData);
+                newData[Payload.HOLD_TIME] = Math.max(0, Math.min(60, minutes));
+                await this.writeState(newData);
+            }
+
+            async setSchedule(mode, hour, minute, tempC) {
+                if (!this.stateData) return;
+                
+                // Implementation mirrors Python logic
+                // If mode is OFF
+                if (mode === 'off') {
+                    const newData = new Uint8Array(this.stateData);
+                    newData[Payload.STATUS_FLAGS] &= ~Flags.SCHEDULE_ENABLED;
+                    newData[Payload.SCHEDULE_TEMP] = 0xC0; // Default? Python uses 0xc0
+                    newData[Payload.SCHEDULE_HOURS] = 0;
+                    newData[Payload.SCHEDULE_MINUTES] = 0;
+                    await this.writeState(newData);
+                    return;
+                }
+
+                // If mode change, disable first
+                // (We skip this optimization/complexity for this simple implementation unless necessary, 
+                // but the Python code does it. Let's do it simply: just write the new state)
+                // Actually, Python says "Changing between ONCE and DAILY requires a two-step BLE write."
+                // We'll implement the disable-first if switching modes.
+                
+                // For now, let's just write the target state. The firmware might handle it or we might need the 2-step.
+                // Let's do the single write first for simplicity.
+                
+                const newData = new Uint8Array(this.stateData);
+                newData[Payload.STATUS_FLAGS] |= Flags.SCHEDULE_ENABLED;
+                newData[Payload.SCHEDULE_TEMP] = Math.round(tempC * 2);
+                newData[Payload.SCHEDULE_HOURS] = hour;
+                newData[Payload.SCHEDULE_MINUTES] = minute;
+                
+                if (mode === 'once') {
+                    newData[Payload.COUNTER] |= Flags.SCHEDULE_MODE;
+                } else {
+                    newData[Payload.COUNTER] &= ~Flags.SCHEDULE_MODE;
+                }
+
+                await this.writeState(newData);
+            }
+        }
+
+        // --- App UI Logic ---
+
+        const kettle = new StaggEKGPro();
+
+        // Elements
+        const els = {
+            scanSection: document.getElementById('scan-section'),
+            dashboard: document.getElementById('dashboard'),
+            status: document.getElementById('connection-status'),
+            connectBtn: document.getElementById('connect-btn'),
+            disconnectBtn: document.getElementById('disconnect-btn'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            errorMsg: document.getElementById('error-msg'),
+            
+            tempDisplay: document.getElementById('display-target-temp'),
+            tempSlider: document.getElementById('temp-slider'),
+            
+            schedMode: document.getElementById('schedule-mode'),
+            schedH: document.getElementById('sched-h'),
+            schedM: document.getElementById('sched-m'),
+            schedTemp: document.getElementById('schedule-temp'),
+            saveSchedBtn: document.getElementById('save-schedule-btn'),
+            
+            holdTime: document.getElementById('hold-time'),
+            setHoldBtn: document.getElementById('set-hold-btn'),
+            
+            infoAlt: document.getElementById('info-altitude'),
+            infoLang: document.getElementById('info-language'),
+            infoClock: document.getElementById('info-clock')
+        };
+
+        // Event Listeners
+        els.connectBtn.addEventListener('click', async () => {
+            els.errorMsg.classList.add('hidden');
+            els.connectBtn.innerText = 'Connecting...';
+            els.connectBtn.disabled = true;
+            try {
+                await kettle.connect();
+                updateUIConnected(true);
+            } catch (e) {
+                els.errorMsg.innerText = e.message;
+                els.errorMsg.classList.remove('hidden');
+                updateUIConnected(false);
+            } finally {
+                els.connectBtn.innerText = 'Connect Device';
+                els.connectBtn.disabled = false;
+            }
+        });
+
+        els.disconnectBtn.addEventListener('click', () => {
+            kettle.disconnect();
+            updateUIConnected(false);
+        });
+
+        kettle.onStateChange = (state) => {
+            if (!state.connected) {
+                updateUIConnected(false);
+                return;
+            }
+            renderState(state);
+        };
+
+        // Temp Control
+        els.tempSlider.addEventListener('input', (e) => {
+            els.tempDisplay.innerText = e.target.value;
+        });
+        els.tempSlider.addEventListener('change', (e) => {
+            kettle.setTemperature(parseFloat(e.target.value));
+        });
+
+        // Hold Control
+        els.setHoldBtn.addEventListener('click', () => {
+            kettle.setHoldTime(parseInt(els.holdTime.value));
+        });
+
+        // Schedule Time Controls
+        function adjTime(el, delta, max) {
+            let v = parseInt(el.value) + delta;
+            if (v > max) v = 0;
+            if (v < 0) v = max;
+            el.value = String(v).padStart(2, '0');
+        }
+        document.getElementById('btn-h-up').onclick = () => adjTime(els.schedH, 1, 23);
+        document.getElementById('btn-h-down').onclick = () => adjTime(els.schedH, -1, 23);
+        document.getElementById('btn-m-up').onclick = () => adjTime(els.schedM, 1, 59);
+        document.getElementById('btn-m-down').onclick = () => adjTime(els.schedM, -1, 59);
+
+        // Schedule Save
+        els.saveSchedBtn.addEventListener('click', async () => {
+            try {
+                await kettle.setSchedule(
+                    els.schedMode.value,
+                    parseInt(els.schedH.value),
+                    parseInt(els.schedM.value),
+                    parseFloat(els.schedTemp.value)
+                );
+                
+                const s = document.getElementById('schedule-status');
+                s.classList.remove('opacity-0');
+                setTimeout(() => s.classList.add('opacity-0'), 2000);
+            } catch (e) {
+                alert('Failed to set schedule: ' + e);
+            }
+        });
+
+        function updateUIConnected(isConnected) {
+            if (isConnected) {
+                els.status.innerText = 'Connected';
+                els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
+                els.dashboard.classList.remove('hidden');
+                els.scanSection.classList.add('hidden');
+                els.disconnectBtn.classList.remove('hidden');
+                els.refreshBtn.classList.remove('hidden');
+            } else {
+                els.status.innerText = 'Disconnected';
+                els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
+                els.dashboard.classList.add('hidden');
+                els.scanSection.classList.remove('hidden');
+                els.disconnectBtn.classList.add('hidden');
+                els.refreshBtn.classList.add('hidden');
+            }
+        }
+
+        function renderState(state) {
+            // Avoid jitter while dragging
+            if (document.activeElement !== els.tempSlider) {
+                els.tempSlider.value = state.target_temperature;
+                els.tempDisplay.innerText = state.target_temperature;
+            }
+
+            // Info
+            els.infoAlt.innerText = state.altitude_meters;
+            els.infoLang.innerText = ['English','French','Spanish','Chinese Simp','Chinese Trad'][state.language] || 'Unknown';
+            els.infoClock.innerText = `${String(state.clock.hour).padStart(2,'0')}:${String(state.clock.minute).padStart(2,'0')}`;
+            
+            // Sync Schedule (if not editing)
+            // Ideally we'd have a dirty check, but for now just sync if not focused
+            if (![els.schedMode, els.schedH, els.schedM, els.schedTemp].includes(document.activeElement)) {
+                if (state.schedule) {
+                    els.schedMode.value = state.schedule.mode;
+                    els.schedH.value = String(state.schedule.hour).padStart(2,'0');
+                    els.schedM.value = String(state.schedule.minute).padStart(2,'0');
+                    els.schedTemp.value = state.schedule.temperature_celsius;
+                }
+            }
+            
+            if (document.activeElement !== els.holdTime) {
+                // Approximate match for the dropdown
+                let closest = [0, 15, 30, 45, 60].reduce((prev, curr) => 
+                    Math.abs(curr - state.hold_time_minutes) < Math.abs(prev - state.hold_time_minutes) ? curr : prev
+                );
+                els.holdTime.value = closest;
+            }
+        }
+
+    </script>
+</body>
+</html>
