@@ -56,67 +56,63 @@ class StaggEKGPro {
         this.onStateChange = null;
     }
 
-    async connect() {
-        try {
-            console.log('Requesting Bluetooth Device...');
-            this.device = await navigator.bluetooth.requestDevice({
-                filters: [
-                    { namePrefix: 'Stagg' },
-                    { namePrefix: 'Fellow' },
-                    { namePrefix: 'EKG' }
-                ],
-                optionalServices: OPTIONAL_SERVICES,
-                acceptAllDevices: false 
-            });
+    async requestDevice() {
+        this.device = await navigator.bluetooth.requestDevice({
+            filters: [
+                { namePrefix: 'Stagg' },
+                { namePrefix: 'Fellow' },
+                { namePrefix: 'EKG' }
+            ],
+            optionalServices: OPTIONAL_SERVICES,
+            acceptAllDevices: false 
+        });
+        this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
+    }
 
-            this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
+    async connectGatt() {
+        if (!this.device) throw new Error("No device selected");
+        
+        console.log('Connecting to GATT Server...');
+        this.server = await this.device.gatt.connect();
 
-            console.log('Connecting to GATT Server...');
-            this.server = await this.device.gatt.connect();
-
-            console.log('Getting Service...');
-            let service = null;
-            
-            // Try to find the service containing our characteristic
-            // Since we don't know for sure which one it is, we might need to search
-            // but WebBluetooth requires `getPrimaryService` with a specific UUID.
-            // We'll try the known ones.
-            for (const uuid of OPTIONAL_SERVICES) {
+        console.log('Getting Service...');
+        let service = null;
+        
+        for (const uuid of OPTIONAL_SERVICES) {
+            try {
+                service = await this.server.getPrimaryService(uuid);
+                console.log('Found service:', uuid);
                 try {
-                    service = await this.server.getPrimaryService(uuid);
-                    console.log('Found service:', uuid);
-                    // Verify characteristic exists
-                    try {
-                        this.characteristic = await service.getCharacteristic(MAIN_CONFIG_UUID);
-                        break; 
-                    } catch (e) {
-                        console.log(`Characteristic not in service ${uuid}`);
-                        service = null;
-                    }
+                    this.characteristic = await service.getCharacteristic(MAIN_CONFIG_UUID);
+                    break; 
                 } catch (e) {
-                    // Service not found
+                    console.log(`Characteristic not in service ${uuid}`);
+                    service = null;
                 }
+            } catch (e) {
+                // Service not found
             }
-
-            if (!this.characteristic) {
-                throw new Error('Could not find Main Config Characteristic. Ensure the device is supported.');
-            }
-
-            console.log('Starting Notifications...');
-            await this.characteristic.startNotifications();
-            this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
-
-            // Initial read
-            console.log('Reading initial state...');
-            const value = await this.characteristic.readValue();
-            this.updateState(value);
-            
-            return true;
-
-        } catch (error) {
-            console.error('Connection failed!', error);
-            throw error;
         }
+
+        if (!this.characteristic) {
+            throw new Error('Could not find Main Config Characteristic. Ensure the device is supported.');
+        }
+
+        console.log('Starting Notifications...');
+        await this.characteristic.startNotifications();
+        this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+
+        // Initial read
+        console.log('Reading initial state...');
+        const value = await this.characteristic.readValue();
+        this.updateState(value);
+        
+        return true;
+    }
+
+    async connect() {
+        await this.requestDevice();
+        await this.connectGatt();
     }
 
     async disconnect() {
@@ -288,25 +284,65 @@ document.addEventListener('DOMContentLoaded', () => {
         
         infoAlt: document.getElementById('info-altitude'),
         infoLang: document.getElementById('info-language'),
-        infoClock: document.getElementById('info-clock')
+        infoClock: document.getElementById('info-clock'),
+
+        // Views
+        scanContent: document.getElementById('scan-content'),
+        connectingContent: document.getElementById('connecting-content'),
+        connectingStatus: document.getElementById('connecting-status')
     };
+
+    function updateUIConnecting(isConnecting, statusText) {
+        if (!els.scanContent || !els.connectingContent) return;
+
+        if (isConnecting) {
+            // Fade out scan content but keep it in DOM to maintain height
+            els.scanContent.classList.add('opacity-0', 'pointer-events-none');
+            
+            els.connectingContent.classList.remove('hidden');
+            // small delay to allow display:block to apply before opacity transition
+            setTimeout(() => els.connectingContent.classList.remove('opacity-0'), 50);
+            
+            if (statusText && els.connectingStatus) els.connectingStatus.innerText = statusText;
+        } else {
+            els.connectingContent.classList.add('opacity-0');
+            setTimeout(() => els.connectingContent.classList.add('hidden'), 300);
+            
+            // Fade scan content back in
+            els.scanContent.classList.remove('hidden'); // Safety check
+            setTimeout(() => els.scanContent.classList.remove('opacity-0', 'pointer-events-none'), 50);
+        }
+    }
 
     // Event Listeners
     if (els.connectBtn) {
         els.connectBtn.addEventListener('click', async () => {
-            els.errorMsg.classList.add('hidden');
-            els.connectBtn.innerText = 'Connecting...';
-            els.connectBtn.disabled = true;
+            if (els.errorMsg) els.errorMsg.classList.add('hidden');
+            
+            // We don't show connecting UI immediately for WebBluetooth because the picker needs to be seen first.
+            // But we can show "Requesting Permission..." or similar?
+            // Actually, showing it *after* they select is better UX, but we can't detect "selection" easily until `requestDevice` returns.
+            // So we'll show it after `requestDevice` returns (which means they picked something).
+            
             try {
-                await kettle.connect();
+                // 1. Picker Phase
+                console.log('Requesting Bluetooth Device...');
+                await kettle.requestDevice(); 
+                
+                // 2. Connecting Phase (User selected device)
+                updateUIConnecting(true, "Negotiating Link...");
+                
+                await kettle.connectGatt();
                 updateUIConnected(true);
+                updateUIConnecting(false); // Hide connecting view
+                
             } catch (e) {
-                els.errorMsg.innerText = e.message;
-                els.errorMsg.classList.remove('hidden');
+                if (els.errorMsg) {
+                    els.errorMsg.innerText = e.message;
+                    els.errorMsg.classList.remove('hidden');
+                }
                 updateUIConnected(false);
-            } finally {
-                els.connectBtn.innerText = 'Connect Device';
-                els.connectBtn.disabled = false;
+                updateUIConnecting(false);
             }
         });
     }

@@ -254,8 +254,35 @@ async function saveSchedule() {
 
 // --- UI Helpers ---
 
+const els = {
+    scanContent: document.getElementById('scan-content'),
+    connectingContent: document.getElementById('connecting-content'),
+    connectingStatus: document.getElementById('connecting-status')
+};
+
+function updateUIConnecting(isConnecting, statusText) {
+    if (!els.scanContent || !els.connectingContent) return;
+
+    if (isConnecting) {
+        // Fade out scan content but keep it in DOM to maintain height
+        els.scanContent.classList.add('opacity-0', 'pointer-events-none');
+        
+        els.connectingContent.classList.remove('hidden');
+        setTimeout(() => els.connectingContent.classList.remove('opacity-0'), 50);
+        
+        if (statusText && els.connectingStatus) els.connectingStatus.innerText = statusText;
+    } else {
+        els.connectingContent.classList.add('opacity-0');
+        setTimeout(() => els.connectingContent.classList.add('hidden'), 300);
+        
+        els.scanContent.classList.remove('hidden');
+        setTimeout(() => els.scanContent.classList.remove('opacity-0', 'pointer-events-none'), 50);
+    }
+}
+
 function updateConnectionUI(connected) {
     const statusEl = document.getElementById('connection-status');
+    // ... existing ...
     const dashboard = document.getElementById('dashboard');
     const scanSection = document.getElementById('scan-section');
     const disconnectBtn = document.getElementById('disconnect-btn');
@@ -280,9 +307,41 @@ function updateConnectionUI(connected) {
     }
 }
 
-function updateTempDisplay(val) {
-    const el = document.getElementById('display-target-temp');
-    if (el) el.innerText = val;
+// ...
+
+async function connect(address, name) {
+    try {
+        updateUIConnecting(true, "Handshaking with Device...");
+        
+        const statusEl = document.getElementById('connection-status');
+        if (statusEl) {
+            statusEl.innerText = 'Connecting...';
+        }
+        
+        await fetch('/api/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({address})
+        });
+        
+        currentAddress = address;
+        
+        localStorage.setItem('savedDevice', JSON.stringify({
+            address: address,
+            name: name || 'Saved Device'
+        }));
+
+        updateConnectionUI(true);
+        updateUIConnecting(false);
+        fetchState();
+        
+    } catch (e) {
+        alert('Connection failed: ' + e);
+        updateConnectionUI(false);
+        updateUIConnecting(false);
+        const saved = localStorage.getItem('savedDevice');
+        if (saved) renderSavedDevice(JSON.parse(saved));
+    }
 }
 
 function renderState(state) {
