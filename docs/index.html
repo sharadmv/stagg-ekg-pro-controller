@@ -83,21 +83,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                        <div class="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                            <!-- Hour -->
-                            <div class="flex flex-col items-center">
-                                <button id="btn-h-up" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▲</button>
-                                <input type="text" id="sched-h" value="08" class="w-12 text-center font-mono text-2xl bg-transparent border-none focus:ring-0 p-0 text-gray-800" readonly>
-                                <button id="btn-h-down" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▼</button>
-                            </div>
-                            <span class="text-2xl font-bold text-gray-300 pb-1">:</span>
-                            <!-- Minute -->
-                            <div class="flex flex-col items-center">
-                                <button id="btn-m-up" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▲</button>
-                                <input type="text" id="sched-m" value="00" class="w-12 text-center font-mono text-2xl bg-transparent border-none focus:ring-0 p-0 text-gray-800" readonly>
-                                <button id="btn-m-down" class="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-200 rounded">▼</button>
-                            </div>
-                        </div>
+                        <input type="time" id="sched-time" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border text-lg" value="08:00">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Target Temp (°C)</label>

@@ -276,8 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tempSlider: document.getElementById('temp-slider'),
         
         schedMode: document.getElementById('schedule-mode'),
-        schedH: document.getElementById('sched-h'),
-        schedM: document.getElementById('sched-m'),
+        schedTime: document.getElementById('sched-time'),
         schedTemp: document.getElementById('schedule-temp'),
         saveSchedBtn: document.getElementById('save-schedule-btn'),
         
@@ -341,32 +340,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Schedule Time Controls
-    function adjTime(el, delta, max) {
-        let v = parseInt(el.value) + delta;
-        if (v > max) v = 0;
-        if (v < 0) v = max;
-        el.value = String(v).padStart(2, '0');
-    }
-    
-    const btnHUp = document.getElementById('btn-h-up');
-    const btnHDown = document.getElementById('btn-h-down');
-    const btnMUp = document.getElementById('btn-m-up');
-    const btnMDown = document.getElementById('btn-m-down');
+    // Schedule Time Controls (Native Input)
 
-    if (btnHUp) btnHUp.onclick = () => adjTime(els.schedH, 1, 23);
-    if (btnHDown) btnHDown.onclick = () => adjTime(els.schedH, -1, 23);
-    if (btnMUp) btnMUp.onclick = () => adjTime(els.schedM, 1, 59);
-    if (btnMDown) btnMDown.onclick = () => adjTime(els.schedM, -1, 59);
 
     // Schedule Save
     if (els.saveSchedBtn) {
         els.saveSchedBtn.addEventListener('click', async () => {
             try {
+                const [h, m] = els.schedTime.value.split(':').map(Number);
                 await kettle.setSchedule(
                     els.schedMode.value,
-                    parseInt(els.schedH.value),
-                    parseInt(els.schedM.value),
+                    h || 0,
+                    m || 0,
                     parseFloat(els.schedTemp.value)
                 );
                 
@@ -411,11 +396,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sync Schedule (if not editing)
         // Ideally we'd have a dirty check, but for now just sync if not focused
-        if (![els.schedMode, els.schedH, els.schedM, els.schedTemp].includes(document.activeElement)) {
+        if (els.schedTime && ![els.schedMode, els.schedTime, els.schedTemp].includes(document.activeElement)) {
             if (state.schedule) {
                 els.schedMode.value = state.schedule.mode;
-                els.schedH.value = String(state.schedule.hour).padStart(2,'0');
-                els.schedM.value = String(state.schedule.minute).padStart(2,'0');
+                els.schedTime.value = `${String(state.schedule.hour).padStart(2,'0')}:${String(state.schedule.minute).padStart(2,'0')}`;
                 els.schedTemp.value = state.schedule.temperature_celsius;
             }
         }

@@ -193,12 +193,12 @@ async function setHold() {
 
 async function saveSchedule() {
     const mode = document.getElementById('schedule-mode').value;
-    const hStr = document.getElementById('sched-h').value;
-    const mStr = document.getElementById('sched-m').value;
+    const timeStr = document.getElementById('sched-time').value;
     const temp = document.getElementById('schedule-temp').value;
     
-    const hour = parseInt(hStr, 10);
-    const minute = parseInt(mStr, 10);
+    const [hStr, mStr] = timeStr.split(':');
+    const hour = parseInt(hStr || 0, 10);
+    const minute = parseInt(mStr || 0, 10);
 
     try {
         await fetch('/api/schedule', {
@@ -258,22 +258,6 @@ function updateTempDisplay(val) {
     document.getElementById('display-target-temp').innerText = val;
 }
 
-function adjustTime(unit, delta) {
-    const el = document.getElementById(unit === 'hour' ? 'sched-h' : 'sched-m');
-    let val = parseInt(el.value, 10);
-    val += delta;
-    
-    if (unit === 'hour') {
-        if (val > 23) val = 0;
-        if (val < 0) val = 23;
-    } else {
-        if (val > 59) val = 0;
-        if (val < 0) val = 59;
-    }
-    
-    el.value = String(val).padStart(2, '0');
-}
-
 function renderState(state) {
     // Target Temp
     if (document.activeElement.id !== 'temp-slider') {
@@ -286,14 +270,14 @@ function renderState(state) {
         // simple logic to avoid overwriting user input while editing?
         // For now, just overwrite
         if (document.activeElement.id !== 'schedule-mode' && 
-            document.activeElement.id !== 'sched-h' && 
-            document.activeElement.id !== 'sched-m' && 
+            document.activeElement.id !== 'sched-time' && 
             document.activeElement.id !== 'schedule-temp') {
                 
             document.getElementById('schedule-mode').value = state.schedule.mode;
             
-            document.getElementById('sched-h').value = String(state.schedule.hour).padStart(2, '0');
-            document.getElementById('sched-m').value = String(state.schedule.minute).padStart(2, '0');
+            const h = String(state.schedule.hour).padStart(2, '0');
+            const m = String(state.schedule.minute).padStart(2, '0');
+            document.getElementById('sched-time').value = `${h}:${m}`;
             
             document.getElementById('schedule-temp').value = state.schedule.temperature_celsius;
         }
