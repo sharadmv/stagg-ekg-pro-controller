@@ -192,32 +192,43 @@ async function setHold() {
 }
 
 async function saveSchedule() {
-    const mode = document.getElementById('schedule-mode').value;
-    const timeStr = document.getElementById('sched-time').value;
-    const temp = document.getElementById('schedule-temp').value;
+    const mode = document.getElementById('schedule-mode');
+    const time = document.getElementById('sched-time');
+    const hInput = document.getElementById('sched-h');
+    const mInput = document.getElementById('sched-m');
+    const temp = document.getElementById('schedule-temp');
     
-    const [hStr, mStr] = timeStr.split(':');
-    const hour = parseInt(hStr || 0, 10);
-    const minute = parseInt(mStr || 0, 10);
+    let hour = 0, minute = 0;
+
+    if (time) {
+        const [h, m] = time.value.split(':').map(Number);
+        hour = h || 0;
+        minute = m || 0;
+    } else if (hInput && mInput) {
+        hour = parseInt(hInput.value, 10);
+        minute = parseInt(mInput.value, 10);
+    }
 
     try {
         await fetch('/api/schedule', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                mode: mode,
+                mode: mode ? mode.value : 'off',
                 hour: hour,
                 minute: minute,
-                temperature: parseFloat(temp)
+                temperature: temp ? parseFloat(temp.value) : 85
             })
         });
         
         // Show success message
         const statusEl = document.getElementById('schedule-status');
-        statusEl.classList.remove('opacity-0');
-        setTimeout(() => {
-            statusEl.classList.add('opacity-0');
-        }, 2000);
+        if (statusEl) {
+            statusEl.classList.remove('opacity-0');
+            setTimeout(() => {
+                statusEl.classList.add('opacity-0');
+            }, 2000);
+        }
         
         fetchState();
     } catch (e) { alert(e); }
@@ -233,63 +244,92 @@ function updateConnectionUI(connected) {
     const refreshBtn = document.getElementById('refresh-btn');
 
     if (connected) {
-        statusBadge.innerText = 'Connected';
-        statusBadge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
-        dashboard.classList.remove('hidden');
-        scanSection.classList.add('hidden'); // Hide scan area to clean up UI
-        disconnectBtn.classList.remove('hidden');
-        refreshBtn.classList.remove('hidden');
+        if (statusBadge) {
+            statusBadge.innerText = 'Connected';
+            statusBadge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
+        }
+        if (dashboard) dashboard.classList.remove('hidden');
+        if (scanSection) scanSection.classList.add('hidden');
+        if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+        if (refreshBtn) refreshBtn.classList.remove('hidden');
         
-        // Better: Show Disconnect button, hide Scan button?
-        // For now, simple logic:
-        document.getElementById('scan-results').innerHTML = ''; // Clear results
+        const scanRes = document.getElementById('scan-results');
+        if (scanRes) scanRes.innerHTML = ''; 
     } else {
-        statusBadge.innerText = 'Disconnected';
-        statusBadge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
-        dashboard.classList.add('hidden');
-        scanSection.classList.remove('hidden');
-        disconnectBtn.classList.add('hidden');
-        refreshBtn.classList.add('hidden');
+        if (statusBadge) {
+            statusBadge.innerText = 'Disconnected';
+            statusBadge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
+        }
+        if (dashboard) dashboard.classList.add('hidden');
+        if (scanSection) scanSection.classList.remove('hidden');
+        if (disconnectBtn) disconnectBtn.classList.add('hidden');
+        if (refreshBtn) refreshBtn.classList.add('hidden');
         currentAddress = null;
     }
 }
 
 function updateTempDisplay(val) {
-    document.getElementById('display-target-temp').innerText = val;
+    const el = document.getElementById('display-target-temp');
+    if (el) el.innerText = val;
 }
 
 function renderState(state) {
     // Target Temp
-    if (document.activeElement.id !== 'temp-slider') {
-        document.getElementById('temp-slider').value = state.target_temperature;
+    const slider = document.getElementById('temp-slider');
+    if (slider && document.activeElement.id !== 'temp-slider') {
+        slider.value = state.target_temperature;
         updateTempDisplay(state.target_temperature);
     }
 
     // Schedule
     if (state.schedule) {
-        // simple logic to avoid overwriting user input while editing?
-        // For now, just overwrite
-        if (document.activeElement.id !== 'schedule-mode' && 
-            document.activeElement.id !== 'sched-time' && 
-            document.activeElement.id !== 'schedule-temp') {
-                
-            document.getElementById('schedule-mode').value = state.schedule.mode;
-            
+        const mode = document.getElementById('schedule-mode');
+        const time = document.getElementById('sched-time');
+        const hInput = document.getElementById('sched-h');
+        const mInput = document.getElementById('sched-m');
+        const temp = document.getElementById('schedule-temp');
+
+        // Mode
+        if (mode && document.activeElement.id !== 'schedule-mode') {
+            mode.value = state.schedule.mode;
+        }
+
+        // Time (New)
+        if (time && document.activeElement.id !== 'sched-time') {
             const h = String(state.schedule.hour).padStart(2, '0');
             const m = String(state.schedule.minute).padStart(2, '0');
-            document.getElementById('sched-time').value = `${h}:${m}`;
-            
-            document.getElementById('schedule-temp').value = state.schedule.temperature_celsius;
+            time.value = `${h}:${m}`;
+        }
+        
+        // Time (Old)
+        if (hInput && mInput && 
+            document.activeElement.id !== 'sched-h' && 
+            document.activeElement.id !== 'sched-m') {
+            hInput.value = String(state.schedule.hour).padStart(2, '0');
+            mInput.value = String(state.schedule.minute).padStart(2, '0');
+        }
+
+        // Temp
+        if (temp && document.activeElement.id !== 'schedule-temp') {
+            temp.value = state.schedule.temperature_celsius;
+            const display = document.getElementById('display-schedule-temp');
+            if (display) display.innerText = state.schedule.temperature_celsius;
         }
     }
 
     // Hold Time
-    if (document.activeElement.id !== 'hold-time') {
-        document.getElementById('hold-time').value = state.hold_time_minutes;
+    const hold = document.getElementById('hold-time');
+    if (hold && document.activeElement.id !== 'hold-time') {
+        hold.value = state.hold_time_minutes;
     }
 
     // Info
-    document.getElementById('info-altitude').innerText = state.altitude_meters;
-    document.getElementById('info-language').innerText = state.language;
-    document.getElementById('info-clock').innerText = state.clock_time;
+    const alt = document.getElementById('info-altitude');
+    if (alt) alt.innerText = state.altitude_meters;
+    
+    const lang = document.getElementById('info-language');
+    if (lang) lang.innerText = state.language;
+    
+    const clock = document.getElementById('info-clock');
+    if (clock) clock.innerText = state.clock_time;
 }

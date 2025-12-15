@@ -277,7 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         schedMode: document.getElementById('schedule-mode'),
         schedTime: document.getElementById('sched-time'),
+        schedH: document.getElementById('sched-h'),
+        schedM: document.getElementById('sched-m'),
         schedTemp: document.getElementById('schedule-temp'),
+        schedTempDisplay: document.getElementById('display-schedule-temp'),
         saveSchedBtn: document.getElementById('save-schedule-btn'),
         
         holdTime: document.getElementById('hold-time'),
@@ -340,24 +343,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Schedule Time Controls (Native Input)
-
+    // Schedule Temp Control
+    if (els.schedTemp) {
+        els.schedTemp.addEventListener('input', (e) => {
+            if (els.schedTempDisplay) els.schedTempDisplay.innerText = e.target.value;
+        });
+    }
 
     // Schedule Save
     if (els.saveSchedBtn) {
         els.saveSchedBtn.addEventListener('click', async () => {
             try {
-                const [h, m] = els.schedTime.value.split(':').map(Number);
+                let h = 0, m = 0;
+                
+                if (els.schedTime) {
+                     const parts = els.schedTime.value.split(':');
+                     if (parts.length === 2) {
+                         h = parseInt(parts[0], 10);
+                         m = parseInt(parts[1], 10);
+                     }
+                } else if (els.schedH && els.schedM) {
+                    h = parseInt(els.schedH.value, 10);
+                    m = parseInt(els.schedM.value, 10);
+                }
+
                 await kettle.setSchedule(
-                    els.schedMode.value,
+                    els.schedMode ? els.schedMode.value : 'off',
                     h || 0,
                     m || 0,
-                    parseFloat(els.schedTemp.value)
+                    els.schedTemp ? parseFloat(els.schedTemp.value) : 85
                 );
                 
                 const s = document.getElementById('schedule-status');
-                s.classList.remove('opacity-0');
-                setTimeout(() => s.classList.add('opacity-0'), 2000);
+                if (s) {
+                    s.classList.remove('opacity-0');
+                    setTimeout(() => s.classList.add('opacity-0'), 2000);
+                }
             } catch (e) {
                 alert('Failed to set schedule: ' + e);
             }
@@ -366,46 +387,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateUIConnected(isConnected) {
         if (isConnected) {
-            els.status.innerText = 'Connected';
-            els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
-            els.dashboard.classList.remove('hidden');
-            els.scanSection.classList.add('hidden');
-            els.disconnectBtn.classList.remove('hidden');
-            els.refreshBtn.classList.remove('hidden');
+            if (els.status) {
+                els.status.innerText = 'Connected';
+                els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
+            }
+            if (els.dashboard) els.dashboard.classList.remove('hidden');
+            if (els.scanSection) els.scanSection.classList.add('hidden');
+            if (els.disconnectBtn) els.disconnectBtn.classList.remove('hidden');
+            if (els.refreshBtn) els.refreshBtn.classList.remove('hidden');
         } else {
-            els.status.innerText = 'Disconnected';
-            els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
-            els.dashboard.classList.add('hidden');
-            els.scanSection.classList.remove('hidden');
-            els.disconnectBtn.classList.add('hidden');
-            els.refreshBtn.classList.add('hidden');
+            if (els.status) {
+                els.status.innerText = 'Disconnected';
+                els.status.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
+            }
+            if (els.dashboard) els.dashboard.classList.add('hidden');
+            if (els.scanSection) els.scanSection.classList.remove('hidden');
+            if (els.disconnectBtn) els.disconnectBtn.classList.add('hidden');
+            if (els.refreshBtn) els.refreshBtn.classList.add('hidden');
         }
     }
 
     function renderState(state) {
-        // Avoid jitter while dragging
-        if (document.activeElement !== els.tempSlider) {
+        // Target Temp
+        if (els.tempSlider && document.activeElement !== els.tempSlider) {
             els.tempSlider.value = state.target_temperature;
-            els.tempDisplay.innerText = state.target_temperature;
+            if (els.tempDisplay) els.tempDisplay.innerText = state.target_temperature;
         }
 
         // Info
-        els.infoAlt.innerText = state.altitude_meters;
-        els.infoLang.innerText = ['English','French','Spanish','Chinese Simp','Chinese Trad'][state.language] || 'Unknown';
-        els.infoClock.innerText = `${String(state.clock.hour).padStart(2,'0')}:${String(state.clock.minute).padStart(2,'0')}`;
+        if (els.infoAlt) els.infoAlt.innerText = state.altitude_meters;
+        if (els.infoLang) els.infoLang.innerText = ['English','French','Spanish','Chinese Simp','Chinese Trad'][state.language] || 'Unknown';
+        if (els.infoClock) els.infoClock.innerText = `${String(state.clock.hour).padStart(2,'0')}:${String(state.clock.minute).padStart(2,'0')}`;
         
-        // Sync Schedule (if not editing)
-        // Ideally we'd have a dirty check, but for now just sync if not focused
-        if (els.schedTime && ![els.schedMode, els.schedTime, els.schedTemp].includes(document.activeElement)) {
-            if (state.schedule) {
+        // Sync Schedule
+        if (state.schedule) {
+            if (els.schedMode && document.activeElement !== els.schedMode) {
                 els.schedMode.value = state.schedule.mode;
-                els.schedTime.value = `${String(state.schedule.hour).padStart(2,'0')}:${String(state.schedule.minute).padStart(2,'0')}`;
+            }
+            if (els.schedTemp && document.activeElement !== els.schedTemp) {
                 els.schedTemp.value = state.schedule.temperature_celsius;
+                if (els.schedTempDisplay) els.schedTempDisplay.innerText = state.schedule.temperature_celsius;
+            }
+
+            // Handle New Input
+            if (els.schedTime && document.activeElement !== els.schedTime) {
+                els.schedTime.value = `${String(state.schedule.hour).padStart(2,'0')}:${String(state.schedule.minute).padStart(2,'0')}`;
+            }
+            // Handle Old Inputs (Fallback)
+            if (els.schedH && els.schedM && document.activeElement !== els.schedH && document.activeElement !== els.schedM) {
+                els.schedH.value = String(state.schedule.hour).padStart(2,'0');
+                els.schedM.value = String(state.schedule.minute).padStart(2,'0');
             }
         }
         
-        if (document.activeElement !== els.holdTime) {
-            // Approximate match for the dropdown
+        // Hold Time
+        if (els.holdTime && document.activeElement !== els.holdTime) {
             let closest = [0, 15, 30, 45, 60].reduce((prev, curr) => 
                 Math.abs(curr - state.hold_time_minutes) < Math.abs(prev - state.hold_time_minutes) ? curr : prev
             );
