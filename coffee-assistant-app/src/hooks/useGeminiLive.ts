@@ -34,6 +34,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
   const [draftBrew, setDraftBrew] = useState<PartialBrewAttempt | null>(null);
   const [draftBean, setDraftBean] = useState<PartialBean | null>(null);
   
+  const draftBrewRef = useRef<PartialBrewAttempt | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
@@ -56,6 +57,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
     setIsThinking(false);
     nextStartTimeRef.current = 0;
     setDraftBrew(null);
+    draftBrewRef.current = null;
     setDraftBean(null);
   }, []);
 
@@ -82,17 +84,23 @@ export function useGeminiLive(onDataUpdated?: () => void) {
     const logs: BrewAttempt[] = JSON.parse(localStorage.getItem('brew_logs') || '[]');
     const newLog: BrewAttempt = {
       ...args,
+      ...draftBrewRef.current, // prioritize manual edits/current draft state
       id: crypto.randomUUID?.() || Math.random().toString(36).substring(7),
       date: new Date().toISOString()
     };
     localStorage.setItem('brew_logs', JSON.stringify([newLog, ...logs]));
     setDraftBrew(null);
+    draftBrewRef.current = null;
     if (onDataUpdated) onDataUpdated();
     return { success: true, message: "Brew log saved successfully." };
   }, [onDataUpdated]);
 
   const updateDraft = useCallback((args: PartialBrewAttempt) => {
-    setDraftBrew(prev => ({ ...prev, ...args }));
+    setDraftBrew(prev => {
+      const newState = { ...prev, ...args };
+      draftBrewRef.current = newState;
+      return newState;
+    });
     return { success: true };
   }, []);
 
@@ -340,6 +348,17 @@ export function useGeminiLive(onDataUpdated?: () => void) {
               
                 useEffect(() => { return () => disconnect(); }, [disconnect]);
               
-                return { isConnected, isThinking, transcript, error, connect, disconnect, analyserRef, draftBrew, draftBean };
+  return {
+    isConnected,
+    isThinking,
+    transcript,
+    error,
+    connect,
+    disconnect,
+    analyserRef,
+    draftBrew,
+    draftBean,
+    updateBrewDraft: updateDraft
+  };
               }
               

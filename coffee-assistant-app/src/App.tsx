@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Coffee, Mic, MicOff, Settings, MessageSquare, History, List, Book, Trash2 } from 'lucide-react';
+import { Coffee, Mic, MicOff, Settings, MessageSquare, History, List, Book, Trash2, Pencil } from 'lucide-react';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import LiveVisualizer from './components/LiveVisualizer';
 import BrewHistory from './components/BrewHistory';
 import BrewDraft from './components/BrewDraft';
+import Modal from './components/Modal';
 import type { BrewAttempt, Bean } from './types/gemini';
 
 const VOICES = [
@@ -21,6 +22,8 @@ function App() {
   const [brewLogs, setBrewLogs] = useState<BrewAttempt[]>([]);
   const [beans, setBeans] = useState<Bean[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
+  const [editingBean, setEditingBean] = useState<Bean | null>(null);
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
 
   const loadData = useCallback(() => {
     setBrewLogs(JSON.parse(localStorage.getItem('brew_logs') || '[]'));
@@ -37,7 +40,7 @@ function App() {
     localStorage.setItem('gemini_voice', voice); 
   }, [voice]);
 
-  const { isConnected, isThinking, transcript, connect, disconnect, analyserRef, draftBrew, draftBean } = useGeminiLive(loadData);
+  const { isConnected, isThinking, transcript, connect, disconnect, analyserRef, draftBrew, draftBean, updateBrewDraft } = useGeminiLive(loadData);
 
   const handleDeleteLog = (id: string) => {
     const updated = brewLogs.filter(log => log.id !== id);
@@ -49,6 +52,32 @@ function App() {
     const updated = beans.filter(bean => bean.id !== id);
     localStorage.setItem('coffee_beans', JSON.stringify(updated));
     setBeans(updated);
+  };
+
+  const handleSaveBean = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingBean) return;
+
+    const updatedBeans = beans.map(b => b.id === editingBean.id ? editingBean : b);
+    localStorage.setItem('coffee_beans', JSON.stringify(updatedBeans));
+    setBeans(updatedBeans);
+    setEditingBean(null);
+  };
+
+  const handleSaveDraft = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const updates = {
+      brewer: formData.get('brewer') as string,
+      ratio: formData.get('ratio') as string,
+      waterTemp: Number(formData.get('waterTemp')) || undefined,
+      beanId: formData.get('beanId') as string,
+      technique: formData.get('technique') as string,
+      extraction: Number(formData.get('extraction')) || undefined,
+      enjoyment: Number(formData.get('enjoyment')) || undefined,
+    };
+    updateBrewDraft(updates);
+    setIsEditingDraft(false);
   };
 
   const handleToggleConnect = () => {
@@ -81,7 +110,12 @@ function App() {
       <main className="flex-1 pb-24 overflow-y-auto">
         {activeTab === 'assistant' && (
           <div className="p-4 space-y-8 max-w-2xl mx-auto">
-            <BrewDraft draft={draftBrew} draftBean={draftBean} beans={beans} />
+            <BrewDraft
+              draft={draftBrew}
+              draftBean={draftBean}
+              beans={beans}
+              onEdit={draftBrew ? () => setIsEditingDraft(true) : undefined}
+            />
             <div className="space-y-3">
               {transcript.length === 0 ? (
                 <div className="text-center py-10 text-stone-700/50">
@@ -115,17 +149,25 @@ function App() {
                 </div>
               )}
               {beans.map(bean => (
-                <div key={bean.id} className="bg-[#2a1f1b] p-5 rounded-3xl border border-amber-900/20 relative overflow-hidden">
-                  <button 
-                    onClick={() => {
-                      if(window.confirm("Delete this bean?")) handleDeleteBean(bean.id);
-                    }}
-                    className="absolute top-4 right-4 p-3 text-stone-500 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div key={bean.id} className="bg-[#2a1f1b] p-5 rounded-3xl border border-amber-900/20 relative overflow-hidden group">
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button
+                      onClick={() => setEditingBean(bean)}
+                      className="p-3 text-stone-500 hover:text-amber-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if(window.confirm("Delete this bean?")) handleDeleteBean(bean.id);
+                      }}
+                      className="p-3 text-stone-500 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                  <div className="flex flex-col gap-1 mb-4">
+                  <div className="flex flex-col gap-1 mb-4 pr-24">
                     <p className="text-amber-600 text-[10px] font-black uppercase tracking-widest">{bean.roastery}</p>
                     <h3 className="font-black text-xl text-amber-50 leading-tight">{bean.name}</h3>
                   </div>
@@ -256,6 +298,166 @@ function App() {
           </button>
         </nav>
       </div>
+
+      <Modal
+        isOpen={!!editingBean}
+        onClose={() => setEditingBean(null)}
+        title="Edit Bean"
+      >
+        <form onSubmit={handleSaveBean} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Roastery</label>
+            <input
+              name="roastery"
+              value={editingBean?.roastery || ''}
+              onChange={e => setEditingBean(prev => prev ? { ...prev, roastery: e.target.value } : null)}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Name</label>
+            <input
+              name="name"
+              value={editingBean?.name || ''}
+              onChange={e => setEditingBean(prev => prev ? { ...prev, name: e.target.value } : null)}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Origin</label>
+              <input
+                name="origin"
+                value={editingBean?.origin || ''}
+                onChange={e => setEditingBean(prev => prev ? { ...prev, origin: e.target.value } : null)}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Process</label>
+              <input
+                name="process"
+                value={editingBean?.process || ''}
+                onChange={e => setEditingBean(prev => prev ? { ...prev, process: e.target.value } : null)}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Varietal</label>
+              <input
+                name="varietal"
+                value={editingBean?.varietal || ''}
+                onChange={e => setEditingBean(prev => prev ? { ...prev, varietal: e.target.value } : null)}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Roast</label>
+              <input
+                name="roastLevel"
+                value={editingBean?.roastLevel || ''}
+                onChange={e => setEditingBean(prev => prev ? { ...prev, roastLevel: e.target.value } : null)}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Notes</label>
+            <textarea
+              name="notes"
+              value={editingBean?.notes || ''}
+              onChange={e => setEditingBean(prev => prev ? { ...prev, notes: e.target.value } : null)}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500 h-20"
+            />
+          </div>
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl">
+            Save Changes
+          </button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditingDraft}
+        onClose={() => setIsEditingDraft(false)}
+        title="Edit Draft"
+      >
+        <form onSubmit={handleSaveDraft} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Brewer</label>
+            <input
+              name="brewer"
+              defaultValue={draftBrew?.brewer || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Bean</label>
+            <select
+              name="beanId"
+              defaultValue={draftBrew?.beanId || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            >
+              <option value="">Select Bean...</option>
+              {beans.map(b => (
+                <option key={b.id} value={b.id}>{b.roastery} - {b.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Ratio</label>
+              <input
+                name="ratio"
+                defaultValue={draftBrew?.ratio || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Temp (°C)</label>
+              <input
+                name="waterTemp"
+                type="number"
+                defaultValue={draftBrew?.waterTemp || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Technique/Method</label>
+            <textarea
+              name="technique"
+              defaultValue={draftBrew?.technique || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500 h-20"
+            />
+          </div>
+           <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Extraction</label>
+              <input
+                name="extraction"
+                type="number"
+                step="0.1"
+                defaultValue={draftBrew?.extraction || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Enjoyment (1-10)</label>
+              <input
+                name="enjoyment"
+                type="number"
+                min="1"
+                max="10"
+                defaultValue={draftBrew?.enjoyment || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl">
+            Update Draft
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import React from 'react';
-import { Loader2, CheckCircle2, Coffee, Sparkles, Search } from 'lucide-react';
+import { Loader2, CheckCircle2, Coffee, Sparkles, Search, Pencil } from 'lucide-react';
 import type { PartialBrewAttempt, Bean, PartialBean } from '../types/gemini';
 
 interface BrewDraftProps {
   draft: PartialBrewAttempt | null;
   draftBean: PartialBean | null;
   beans: Bean[];
+  onEdit?: () => void;
 }
 
-const BrewDraft: React.FC<BrewDraftProps> = ({ draft, draftBean, beans }) => {
+const BrewDraft: React.FC<BrewDraftProps> = ({ draft, draftBean, beans, onEdit }) => {
   // If we are currently researching a bean, show the Bean Research view
   if (draftBean) {
     return (
@@ -78,7 +79,17 @@ const BrewDraft: React.FC<BrewDraftProps> = ({ draft, draftBean, beans }) => {
             </div>
           </div>
         </div>
-        <Loader2 className="w-6 h-6 text-amber-600/50 animate-spin" />
+        <div className="flex items-center gap-3">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="p-2 bg-black/20 hover:bg-black/40 text-amber-600 hover:text-amber-400 rounded-xl transition-colors border border-amber-900/10"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
+          <Loader2 className="w-6 h-6 text-amber-600/50 animate-spin" />
+        </div>
       </div>
 
       <div className="space-y-4">
