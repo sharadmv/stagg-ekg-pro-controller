@@ -30,7 +30,7 @@ const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete, onEdit
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 onClick={() => onEdit(log)}
-                className="p-3 text-stone-500 hover:text-amber-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+                className="p-3 text-stone-400 hover:text-amber-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
               >
                 <Pencil className="w-4 h-4" />
               </button>
@@ -38,7 +38,7 @@ const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete, onEdit
                 onClick={() => {
                   if (window.confirm("Delete this brew record?")) onDelete(log.id);
                 }}
-                className="p-3 text-stone-500 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+                className="p-3 text-stone-400 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

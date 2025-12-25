@@ -61,7 +61,7 @@ export function HistoryView({ logs, beans, onDelete, onEdit, editingLog, setEdit
                         <h3 className="font-bold text-lg text-white">{getBeanName(log.beanId)}</h3>
                         <p className="text-sm text-text-muted font-medium">{log.brewer}</p>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4 bg-app-card/80 backdrop-blur-sm rounded-xl p-1 shadow-xl border border-white/5">
+                    <div className="flex gap-1 absolute top-4 right-4 bg-app-card/80 backdrop-blur-sm rounded-xl p-1 shadow-xl border border-white/5">
                         <Button variant="ghost" size="sm" onClick={() => onEdit(log)} icon={<Pencil className="w-3 h-3" />} />
                         <Button variant="ghost" size="sm" onClick={() => { if(window.confirm("Delete?")) onDelete(log.id) }} className="text-red-500 hover:text-red-400" icon={<Trash2 className="w-3 h-3" />} />
                     </div>

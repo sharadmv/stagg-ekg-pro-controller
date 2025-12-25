@@ -39,7 +39,7 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
                 <p className="text-coffee-gold text-[10px] font-black uppercase tracking-widest mb-1">{bean.roastery}</p>
                 <h3 className="font-bold text-xl text-white leading-tight">{bean.name}</h3>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => onEdit(bean)} icon={<Pencil className="w-3 h-3" />} />
                 <Button variant="ghost" size="sm" onClick={() => { if(window.confirm("Delete?")) onDelete(bean.id) }} className="text-red-500 hover:text-red-400" icon={<Trash2 className="w-3 h-3" />} />
               </div>
