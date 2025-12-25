@@ -6,7 +6,11 @@ import BrewHistory from './components/BrewHistory';
 import BrewDraft from './components/BrewDraft';
 import type { BrewAttempt, Bean } from './types/gemini';
 
-const VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
+const VOICES = [
+  'Achernar', 'Algieba', 'Aoede', 'Autonoe', 'Callirrhoe', 'Charon', 
+  'Despina', 'Enceladus', 'Fenrir', 'Gacrux', 'Iapetus', 'Kore', 
+  'Leda', 'Orus', 'Puck', 'Umbriel', 'Vindemiatrix', 'Zephyr'
+].sort();
 type Tab = 'assistant' | 'history' | 'beans' | 'settings';
 
 function App() {
