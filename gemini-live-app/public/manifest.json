@@ -2,9 +2,7 @@
   "name": "Coffee Assistant",
   "short_name": "Coffee",
   "description": "Interactive brewing assistant powered by Gemini Live",
-  "id": "/coffee_assistant/",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1310",
   "theme_color": "#1a1310",
@@ -12,21 +10,15 @@
   "icons": [
     {
       "src": "favicon.svg",
-      "sizes": "any",
+      "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
       "src": "favicon.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "favicon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }
