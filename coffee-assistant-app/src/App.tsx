@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Coffee, Mic, MicOff, Settings, MessageSquare, History, List, Book, Trash2, Pencil } from 'lucide-react';
+import { Coffee, Mic, MicOff, Settings, MessageSquare, History, List, Book, Trash2, Pencil, Plus } from 'lucide-react';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import LiveVisualizer from './components/LiveVisualizer';
 import BrewHistory from './components/BrewHistory';
@@ -59,7 +59,13 @@ function App() {
     e.preventDefault();
     if (!editingBean) return;
 
-    const updatedBeans = beans.map(b => b.id === editingBean.id ? editingBean : b);
+    let updatedBeans;
+    if (beans.some(b => b.id === editingBean.id)) {
+      updatedBeans = beans.map(b => b.id === editingBean.id ? editingBean : b);
+    } else {
+      updatedBeans = [...beans, editingBean];
+    }
+
     localStorage.setItem('coffee_beans', JSON.stringify(updatedBeans));
     setBeans(updatedBeans);
     setEditingBean(null);
@@ -97,10 +103,43 @@ function App() {
       date: formData.get('date') as string,
     };
 
-    const updatedLogs = brewLogs.map(log => log.id === editingHistoryLog.id ? updatedLog : log);
+    let updatedLogs;
+    if (brewLogs.some(log => log.id === editingHistoryLog.id)) {
+      updatedLogs = brewLogs.map(log => log.id === editingHistoryLog.id ? updatedLog : log);
+    } else {
+      updatedLogs = [...brewLogs, updatedLog];
+    }
+
     localStorage.setItem('brew_logs', JSON.stringify(updatedLogs));
     setBrewLogs(updatedLogs);
     setEditingHistoryLog(null);
+  };
+
+  const handleAddNewBean = () => {
+    setEditingBean({
+      id: crypto.randomUUID(),
+      roastery: '',
+      name: '',
+      process: '',
+      origin: '',
+      varietal: '',
+      roastLevel: '',
+      notes: '',
+      url: ''
+    });
+  };
+
+  const handleAddNewLog = () => {
+    setEditingHistoryLog({
+      id: crypto.randomUUID(),
+      date: new Date().toISOString().split('T')[0],
+      brewer: '',
+      beanId: '',
+      ratio: '',
+      waterTemp: 0,
+      technique: '',
+      enjoyment: 0
+    });
   };
 
   const handleToggleConnect = () => {
@@ -296,15 +335,27 @@ function App() {
           </div>
         )}
         <div className="absolute bottom-24 right-6">
-          <button
-            onClick={handleToggleConnect}
-            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all active:scale-90 relative overflow-hidden ${
-              isConnected ? 'bg-red-600 animate-pulse' : 'bg-amber-600 hover:bg-amber-500'
-            }`}
-          >
-            <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
-            {isConnected ? <MicOff className="w-7 h-7 text-white" /> : <Mic className="w-7 h-7 text-white" />}
-          </button>
+          {activeTab === 'assistant' && (
+            <button
+              onClick={handleToggleConnect}
+              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all active:scale-90 relative overflow-hidden ${
+                isConnected ? 'bg-red-600 animate-pulse' : 'bg-amber-600 hover:bg-amber-500'
+              }`}
+            >
+              <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
+              {isConnected ? <MicOff className="w-7 h-7 text-white" /> : <Mic className="w-7 h-7 text-white" />}
+            </button>
+          )}
+
+          {(activeTab === 'beans' || activeTab === 'history') && (
+            <button
+              onClick={activeTab === 'beans' ? handleAddNewBean : handleAddNewLog}
+              className="w-16 h-16 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all active:scale-90 relative overflow-hidden bg-amber-600 hover:bg-amber-500"
+            >
+              <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
+              <Plus className="w-8 h-8 text-white" />
+            </button>
+          )}
         </div>
         <nav className="h-20 bg-[#1a1310]/95 backdrop-blur-xl border-t border-amber-900/10 flex items-center justify-around px-4 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.3)]">
           <button onClick={() => setActiveTab('assistant')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'assistant' ? 'text-amber-500 scale-110' : 'text-stone-600'}`}>
