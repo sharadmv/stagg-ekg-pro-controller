@@ -5,7 +5,27 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        app: {
+          bg: 'var(--bg-app)',
+          card: 'var(--bg-card)',
+          'card-hover': 'var(--bg-card-hover)',
+          border: 'var(--border-subtle)',
+        },
+        coffee: {
+          gold: 'var(--color-primary)',
+          dim: 'var(--color-primary-dim)',
+        },
+        text: {
+          main: 'var(--text-main)',
+          muted: 'var(--text-muted)',
+        }
+      },
+      fontFamily: {
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+      },
+    },
   },
   plugins: [
     require('@tailwindcss/typography'),

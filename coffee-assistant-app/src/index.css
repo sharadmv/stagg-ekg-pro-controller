@@ -1,10 +1,34 @@
 @import "tailwindcss";
 
+:root {
+  --bg-app: #000000;
+  --bg-card: #1c1c1e;
+  --bg-card-hover: #2c2c2e;
+
+  --color-primary: #d4a373; /* Cafe Gold */
+  --color-primary-dim: #9f7851;
+
+  --text-main: #ffffff;
+  --text-muted: #a1a1aa;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
+
 body {
-  @apply bg-slate-900 text-slate-100;
+  background-color: var(--bg-app);
+  color: var(--text-main);
   margin: 0;
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Custom Utilities that might not be in Tailwind default or complex utilities */
+.glass-panel {
+  background: rgba(28, 28, 30, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .pb-safe {
