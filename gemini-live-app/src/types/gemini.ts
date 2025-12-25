@@ -37,6 +37,7 @@ export interface Bean {
   name: string;
   process?: string;
   origin?: string;
+  varietal?: string;
   roastLevel?: string;
   notes?: string;
   url?: string;

@@ -195,6 +195,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       name: { type: "string" },
                       process: { type: "string" },
                       origin: { type: "string" },
+                      varietal: { type: "string" },
                       roastLevel: { type: "string" },
                       notes: { type: "string" }
                     }
@@ -210,6 +211,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       name: { type: "string" },
                       process: { type: "string" },
                       origin: { type: "string" },
+                      varietal: { type: "string" },
                       roastLevel: { type: "string" },
                       notes: { type: "string" },
                       url: { type: "string" }

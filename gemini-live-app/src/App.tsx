@@ -135,6 +135,12 @@ function App() {
                         <p className="text-xs text-amber-100 font-bold">{bean.process}</p>
                       </div>
                     )}
+                    {bean.varietal && (
+                      <div className="bg-black/20 rounded-xl p-2 border border-white/5">
+                        <p className="text-[8px] text-stone-500 font-black uppercase">Varietal</p>
+                        <p className="text-xs text-amber-100 font-bold">{bean.varietal}</p>
+                      </div>
+                    )}
                     {bean.roastLevel && (
                       <div className="bg-black/20 rounded-xl p-2 border border-white/5">
                         <p className="text-[8px] text-stone-500 font-black uppercase">Roast</p>

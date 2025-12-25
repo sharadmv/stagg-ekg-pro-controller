@@ -41,6 +41,10 @@ const BrewDraft: React.FC<BrewDraftProps> = ({ draft, draftBean, beans }) => {
               <p className="text-[8px] text-sky-600 font-black uppercase">Process</p>
               <p className="text-xs font-bold text-sky-100">{draftBean.process || '--'}</p>
             </div>
+            <div className="bg-black/30 rounded-xl p-3 border border-sky-900/30 col-span-2">
+              <p className="text-[8px] text-sky-600 font-black uppercase">Varietal</p>
+              <p className="text-xs font-bold text-sky-100">{draftBean.varietal || '--'}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -99,7 +103,10 @@ const BrewDraft: React.FC<BrewDraftProps> = ({ draft, draftBean, beans }) => {
           <p className={`text-lg font-bold leading-tight ${bean ? 'text-amber-100' : 'text-stone-700'}`}>
             {bean?.name || 'Waiting to select bean...'}
           </p>
-          <p className="text-sm text-stone-500 font-bold mt-1">{bean?.roastery || ''}</p>
+          <div className="flex justify-between items-end mt-1">
+            <p className="text-sm text-stone-500 font-bold">{bean?.roastery || ''}</p>
+            {bean?.varietal && <p className="text-[10px] text-amber-600/60 font-black uppercase">{bean.varietal}</p>}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
