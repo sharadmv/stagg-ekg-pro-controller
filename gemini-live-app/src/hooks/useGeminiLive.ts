@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { 
-  GeminiResponse, SetupMessage, AudioMessage, ToolResponseMessage, 
+  GeminiResponse, 
   BrewAttempt, PartialBrewAttempt, Bean, PartialBean 
 } from '../types/gemini';
 

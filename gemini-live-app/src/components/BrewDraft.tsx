@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, CheckCircle2, Coffee, Droplets, Thermometer, Sparkles, Search } from 'lucide-react';
+import { Loader2, CheckCircle2, Coffee, Sparkles, Search } from 'lucide-react';
 import type { PartialBrewAttempt, Bean, PartialBean } from '../types/gemini';
 
 interface BrewDraftProps {

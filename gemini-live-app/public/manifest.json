@@ -2,7 +2,7 @@
   "name": "Coffee Assistant",
   "short_name": "BrewLog",
   "description": "Your AI Barista Companion",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1310",
   "theme_color": "#1a1310",

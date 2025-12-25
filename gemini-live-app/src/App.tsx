@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Coffee, Mic, MicOff, Settings, MessageSquare, AlertCircle, History, List, Book, Trash2 } from 'lucide-react';
+import { Coffee, Mic, MicOff, Settings, MessageSquare, History, List, Book, Trash2 } from 'lucide-react';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import LiveVisualizer from './components/LiveVisualizer';
 import BrewHistory from './components/BrewHistory';
@@ -31,7 +31,7 @@ function App() {
     localStorage.setItem('gemini_voice', voice); 
   }, [voice]);
 
-  const { isConnected, isThinking, transcript, error, connect, disconnect, analyserRef, draftBrew, draftBean } = useGeminiLive(loadData);
+  const { isConnected, isThinking, transcript, connect, disconnect, analyserRef, draftBrew, draftBean } = useGeminiLive(loadData);
 
   const handleDeleteLog = (id: string) => {
     const updated = brewLogs.filter(log => log.id !== id);
