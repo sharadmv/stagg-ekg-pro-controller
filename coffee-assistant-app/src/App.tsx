@@ -23,6 +23,7 @@ function App() {
   const [beans, setBeans] = useState<Bean[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
   const [editingBean, setEditingBean] = useState<Bean | null>(null);
+  const [editingHistoryLog, setEditingHistoryLog] = useState<BrewAttempt | null>(null);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
 
   const loadData = useCallback(() => {
@@ -78,6 +79,28 @@ function App() {
     };
     updateBrewDraft(updates);
     setIsEditingDraft(false);
+  };
+
+  const handleSaveHistoryLog = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingHistoryLog) return;
+    const formData = new FormData(e.currentTarget);
+    const updatedLog: BrewAttempt = {
+      ...editingHistoryLog,
+      brewer: formData.get('brewer') as string,
+      beanId: formData.get('beanId') as string,
+      ratio: formData.get('ratio') as string,
+      waterTemp: Number(formData.get('waterTemp')) || 0,
+      technique: formData.get('technique') as string,
+      extraction: Number(formData.get('extraction')) || undefined,
+      enjoyment: Number(formData.get('enjoyment')) || 0,
+      date: formData.get('date') as string,
+    };
+
+    const updatedLogs = brewLogs.map(log => log.id === editingHistoryLog.id ? updatedLog : log);
+    localStorage.setItem('brew_logs', JSON.stringify(updatedLogs));
+    setBrewLogs(updatedLogs);
+    setEditingHistoryLog(null);
   };
 
   const handleToggleConnect = () => {
@@ -228,7 +251,7 @@ function App() {
               <History className="w-6 h-6 text-amber-600" />
               Brew Records
             </h2>
-            <BrewHistory logs={brewLogs} beans={beans} onDelete={handleDeleteLog} />
+            <BrewHistory logs={brewLogs} beans={beans} onDelete={handleDeleteLog} onEdit={setEditingHistoryLog} />
           </div>
         )}
 
@@ -455,6 +478,99 @@ function App() {
           </div>
           <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl">
             Update Draft
+          </button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!editingHistoryLog}
+        onClose={() => setEditingHistoryLog(null)}
+        title="Edit Record"
+      >
+        <form onSubmit={handleSaveHistoryLog} className="space-y-4">
+           <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Date</label>
+            <input
+              name="date"
+              type="date"
+              defaultValue={editingHistoryLog?.date ? new Date(editingHistoryLog.date).toISOString().split('T')[0] : ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Brewer</label>
+            <input
+              name="brewer"
+              defaultValue={editingHistoryLog?.brewer || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-amber-600 uppercase mb-1">Bean</label>
+            <select
+              name="beanId"
+              defaultValue={editingHistoryLog?.beanId || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+            >
+              <option value="">Select Bean...</option>
+              {beans.map(b => (
+                <option key={b.id} value={b.id}>{b.roastery} - {b.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Ratio</label>
+              <input
+                name="ratio"
+                defaultValue={editingHistoryLog?.ratio || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Temp (°C)</label>
+              <input
+                name="waterTemp"
+                type="number"
+                defaultValue={editingHistoryLog?.waterTemp || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Technique/Method</label>
+            <textarea
+              name="technique"
+              defaultValue={editingHistoryLog?.technique || ''}
+              className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500 h-20"
+            />
+          </div>
+           <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Extraction</label>
+              <input
+                name="extraction"
+                type="number"
+                step="0.1"
+                defaultValue={editingHistoryLog?.extraction || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+             <div>
+              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Enjoyment (0-5)</label>
+              <input
+                name="enjoyment"
+                type="number"
+                min="0"
+                max="5"
+                step="0.5"
+                defaultValue={editingHistoryLog?.enjoyment || ''}
+                className="w-full bg-black/20 border border-amber-900/30 rounded-xl px-3 py-2 text-amber-50 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl">
+            Save Record
           </button>
         </form>
       </Modal>

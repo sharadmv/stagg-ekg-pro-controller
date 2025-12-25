@@ -1,14 +1,15 @@
 import React from 'react';
-import { Star, Thermometer, Droplets, BookOpen, Trash2, Gauge } from 'lucide-react';
+import { Star, StarHalf, Thermometer, Droplets, BookOpen, Trash2, Gauge, Pencil } from 'lucide-react';
 import type { BrewAttempt, Bean } from '../types/gemini';
 
 interface BrewHistoryProps {
   logs: BrewAttempt[];
   beans: Bean[];
   onDelete: (id: string) => void;
+  onEdit: (log: BrewAttempt) => void;
 }
 
-const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete }) => {
+const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete, onEdit }) => {
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-amber-900/30 border-2 border-dashed border-amber-900/20 rounded-2xl">
@@ -26,16 +27,24 @@ const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete }) => {
         const bean = getBean(log.beanId);
         return (
           <div key={log.id} className="bg-[#2a1f1b] border border-amber-900/20 rounded-3xl p-5 shadow-lg relative overflow-hidden group">
-            <button 
-              onClick={() => {
-                if (window.confirm("Delete this brew record?")) onDelete(log.id);
-              }}
-              className="absolute top-4 right-4 p-3 text-stone-500 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button
+                onClick={() => onEdit(log)}
+                className="p-3 text-stone-500 hover:text-amber-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm("Delete this brew record?")) onDelete(log.id);
+                }}
+                className="p-3 text-stone-500 hover:text-red-400 active:scale-90 transition-all bg-black/20 rounded-xl border border-white/5"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
 
-            <div className="flex justify-between items-start mb-4 pr-12">
+            <div className="flex justify-between items-start mb-4 pr-24">
               <div>
                 <p className="text-amber-600 text-[10px] font-black uppercase tracking-widest mb-1">{bean?.roastery || 'Unknown Roastery'}</p>
                 <h3 className="text-amber-50 font-black text-xl leading-tight">{bean?.name || 'Unknown Bean'}</h3>
@@ -43,12 +52,15 @@ const BrewHistory: React.FC<BrewHistoryProps> = ({ logs, beans, onDelete }) => {
             </div>
 
             <div className="flex gap-1 mb-5">
-              {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  className={`w-4 h-4 ${i < log.enjoyment ? 'text-amber-400 fill-amber-400' : 'text-stone-800'}`} 
-                />
-              ))}
+              {[1, 2, 3, 4, 5].map((i) => {
+                if (log.enjoyment >= i) {
+                  return <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />;
+                } else if (log.enjoyment >= i - 0.5) {
+                  return <StarHalf key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />;
+                } else {
+                  return <Star key={i} className="w-4 h-4 text-stone-800" />;
+                }
+              })}
             </div>
 
             <div className="grid grid-cols-2 gap-y-3 gap-x-4">
