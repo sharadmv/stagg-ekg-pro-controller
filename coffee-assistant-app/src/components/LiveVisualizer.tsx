@@ -16,126 +16,143 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Handle high DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    // We'll set the display size via CSS, but internal resolution here
-    // Assuming a max visualizer size of around 400px for mobile
-    canvas.width = 400 * dpr;
-    canvas.height = 400 * dpr;
-    ctx.scale(dpr, dpr);
+    // Handle high DPI and resizing
+    const resize = () => {
+       const parent = canvas.parentElement;
+       if (parent) {
+           // We use the parent's width, but we might want the height to match the container
+           // The container is absolutely positioned, so we can just fill it.
+           canvas.width = parent.clientWidth * window.devicePixelRatio;
+           canvas.height = parent.clientHeight * window.devicePixelRatio;
+           // Scale context to match device pixel ratio
+           ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+           // Style width/height
+           canvas.style.width = `${parent.clientWidth}px`;
+           canvas.style.height = `${parent.clientHeight}px`;
+       }
+    };
 
-    // Virtual width/height for drawing calculations
-    const width = 400;
-    const height = 400;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    window.addEventListener('resize', resize);
+    resize(); // Initial sizing
 
     const draw = () => {
-      timeRef.current += 0.01;
+      // Logic variables
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+
+      timeRef.current += 0.005; // Slower time base for smoother waves
       ctx.clearRect(0, 0, width, height);
 
-      // --- IDLE STATE ---
-      if (!isConnected || !analyserRef.current) {
-        // Breathing effect
-        const breathe = (Math.sin(timeRef.current * 2) + 1) / 2; // 0 to 1
-        const radius = 60 + (breathe * 10);
+      // --- CONFIGURATION ---
+      // Coffee Palette: Brown (#6F4E37), Amber (#A85D1D), Gold (#D4A373)
+      // We want to create a "Glow" effect, so we use lighter variants and transparency.
 
-        // Outer glow (Brown/Orange)
-        const gradient = ctx.createRadialGradient(centerX, centerY, radius - 20, centerX, centerY, radius + 40);
-        gradient.addColorStop(0, 'rgba(111, 78, 55, 0.8)');   // Coffee brown
-        gradient.addColorStop(0.5, 'rgba(168, 93, 29, 0.3)'); // Dark Amber
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      let amplitudeMultiplier = 0.1; // Idle state amplitude (very low)
 
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius + 40, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
+      if (isConnected && analyserRef.current) {
+        const analyser = analyserRef.current;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
 
-        // Inner circle
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(212, 163, 115, 0.5)'; // Gold
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Calculate average volume
+        // Focus on lower frequencies for "bass" movement which usually looks better on waves
+        const relevantData = dataArray.slice(0, bufferLength / 2);
+        const avg = relevantData.reduce((a, b) => a + b, 0) / relevantData.length;
 
-        // Idle particles or subtle rotation could go here
+        // Map 0-255 to a multiplier.
+        // Idle is 0.1. Active can go up to 1.5 or 2.0 depending on volume.
+        const normalizedVol = avg / 255;
+        amplitudeMultiplier = 0.2 + (normalizedVol * 1.5);
 
-        animationRef.current = requestAnimationFrame(draw);
-        return;
+        // Speed up time slightly with volume
+        timeRef.current += normalizedVol * 0.02;
       }
 
-      // --- ACTIVE STATE ---
-      const analyser = analyserRef.current;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.getByteFrequencyData(dataArray);
+      // We will draw 3 layers of waves
+      const layers = [
+        {
+          colorStart: 'rgba(111, 78, 55, 0.4)', // Coffee Brown
+          colorEnd: 'rgba(111, 78, 55, 0)',
+          speed: 1.0,
+          offset: 0,
+          frequency: 0.002, // Lower frequency = wider waves
+          heightOffset: 20 // Moves the wave up/down
+        },
+        {
+          colorStart: 'rgba(168, 93, 29, 0.5)', // Dark Amber
+          colorEnd: 'rgba(168, 93, 29, 0)',
+          speed: 1.5,
+          offset: 2,
+          frequency: 0.003,
+          heightOffset: 10
+        },
+        {
+          colorStart: 'rgba(212, 163, 115, 0.6)', // Gold
+          colorEnd: 'rgba(212, 163, 115, 0)',
+          speed: 2.0,
+          offset: 4,
+          frequency: 0.004,
+          heightOffset: 0
+        }
+      ];
 
-      // Calculate volume/intensity
-      const avg = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-      const intensity = avg / 255; // 0.0 to 1.0
+      // Global Composite Operation "screen" or "lighter" makes overlaps glow
+      ctx.globalCompositeOperation = 'screen';
 
-      // Base Radius grows with volume
-      const baseRadius = 70 + (intensity * 30);
+      layers.forEach(layer => {
+         ctx.beginPath();
 
-      // 1. Outer Glow (Dynamic Size & Color)
-      const glowRadius = baseRadius + 60 + (intensity * 80);
-      const gradient = ctx.createRadialGradient(centerX, centerY, baseRadius, centerX, centerY, glowRadius);
-      gradient.addColorStop(0, `rgba(168, 93, 29, ${0.6 + intensity * 0.4})`); // Dark Amber core
-      gradient.addColorStop(0.6, `rgba(111, 78, 55, ${0.3 + intensity * 0.2})`); // Coffee Brown mid
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+         const waveHeight = height * 0.3 * amplitudeMultiplier; // Max height of wave peaks
+         const baseHeight = height; // Bottom of canvas
 
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
+         ctx.moveTo(0, baseHeight);
 
-      // 2. Frequency Waveform (Circular)
-      // We'll draw 2 mirrored semi-circles for symmetry or a full circle
-      ctx.beginPath();
-      for (let i = 0; i < bufferLength; i++) {
-        const value = dataArray[i];
-        const percent = value / 255;
-        const angle = (i / bufferLength) * Math.PI * 2;
-        
-        // Distort radius based on frequency data
-        const r = baseRadius + (percent * 40) + (Math.sin(timeRef.current * 5 + i * 0.1) * 5);
+         for (let x = 0; x <= width; x += 10) {
+            // Sine wave formula: y = A * sin(B * x + C) + D
+            // A = Amplitude (waveHeight)
+            // B = Frequency
+            // C = Phase shift (time * speed + offset)
+            // D = Vertical Shift (baseHeight - some offset)
 
-        const x = centerX + Math.cos(angle) * r;
-        const y = centerY + Math.sin(angle) * r;
+            // We use multiple sines for organic look
+            const y1 = Math.sin(x * layer.frequency + timeRef.current * layer.speed + layer.offset);
+            const y2 = Math.sin(x * (layer.frequency * 2) + timeRef.current * layer.speed * 1.5);
 
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = '#d4a373'; // Gold
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(111, 78, 55, 0.2)'; // Coffee tint fill
-      ctx.fill();
+            // Combine them and normalize slightly
+            const normalizedY = (y1 + y2 * 0.5) / 1.5;
 
-      // 3. Inner Core (High energy)
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, baseRadius * 0.8, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(245, 158, 11, ${0.8 + intensity * 0.2})`; // Bright Amber
-      ctx.shadowBlur = 30;
-      ctx.shadowColor = '#f59e0b';
-      ctx.fill();
-      ctx.shadowBlur = 0;
+            // Calculate final Y position.
+            // We want the wave to be at the bottom, so we subtract from height.
+            const y = height - (normalizedY * waveHeight) - (height * 0.2);
 
-      // 4. Floating Particles (optional "fanciness")
-      // Simple rotation of secondary ring
-      const ringRadius = baseRadius + 20 + (intensity * 20);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, ringRadius, 0 + timeRef.current, Math.PI * 1.5 + timeRef.current);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+            ctx.lineTo(x, y);
+         }
+
+         ctx.lineTo(width, baseHeight);
+         ctx.closePath();
+
+         // Gradient Fill
+         // Gradient goes from the "peak" of the wave down to the bottom?
+         // Or strictly vertical gradient on the canvas?
+         // Let's do a vertical gradient based on the wave bounding box essentially.
+         const gradient = ctx.createLinearGradient(0, height - (height * 0.6), 0, height);
+         gradient.addColorStop(0, layer.colorEnd); // Top (transparent)
+         gradient.addColorStop(1, layer.colorStart); // Bottom (color)
+
+         ctx.fillStyle = gradient;
+         ctx.fill();
+      });
+
+      // Restore default composite operation for next frame (though we clear rect anyway)
+      ctx.globalCompositeOperation = 'source-over';
 
       animationRef.current = requestAnimationFrame(draw);
     };
 
     draw();
     return () => {
+      window.removeEventListener('resize', resize);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [isConnected, analyserRef]);
@@ -143,8 +160,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
   return (
     <canvas 
       ref={canvasRef} 
-      className="w-full h-full object-contain"
-      style={{ maxWidth: '400px', maxHeight: '400px' }}
+      className="w-full h-full block"
     />
   );
 };
