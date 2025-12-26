@@ -36,8 +36,8 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
           <Card key={bean.id} className="group">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-coffee-gold text-[10px] font-black uppercase tracking-widest mb-1">{bean.roastery}</p>
-                <h3 className="font-bold text-xl text-white leading-tight">{bean.name}</h3>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tight leading-none mb-1">{bean.roastery}</h3>
+                <p className="text-lg font-medium text-white leading-tight">{bean.name}</p>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => onEdit(bean)} icon={<Pencil className="w-3 h-3" />} />
