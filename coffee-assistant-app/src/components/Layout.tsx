@@ -1,6 +1,5 @@
 import React from 'react';
 import { Coffee, Mic, MicOff, Settings, List, Book, Plus } from 'lucide-react';
-import LiveVisualizer from './LiveVisualizer';
 
 type Tab = 'assistant' | 'history' | 'beans' | 'settings';
 
@@ -23,7 +22,6 @@ export function Layout({
   isThinking,
   onConnectToggle,
   onAddAction,
-  analyserRef
 }: LayoutProps) {
 
   return (
@@ -53,16 +51,8 @@ export function Layout({
         </div>
       </main>
 
-      {/* Floating Action Button & Visualizer */}
+      {/* Floating Action Button & Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-none">
-         {/* Live Visualizer (Dynamic Island style) */}
-        {isConnected && (
-          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 w-64 h-32 animate-in fade-in zoom-in duration-500 pointer-events-none">
-             <div className="w-full h-full drop-shadow-[0_0_30px_rgba(212,163,115,0.3)] opacity-80">
-               <LiveVisualizer analyserRef={analyserRef} isConnected={isConnected} />
-             </div>
-          </div>
-        )}
 
         {/* Action Button */}
         <div className="absolute bottom-24 right-6 pointer-events-auto">

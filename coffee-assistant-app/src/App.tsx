@@ -170,6 +170,8 @@ function App() {
             onEditDraft={() => setIsEditingDraft(true)}
             transcript={transcript}
             isThinking={isThinking}
+            analyserRef={analyserRef}
+            isConnected={isConnected}
         />
       )}
 
@@ -205,30 +207,6 @@ function App() {
         />
       )}
 
-       {/* Keep the Draft Edit Modal here or move to AssistantView - Keeping here to reuse existing logic easily */}
-       {/* Actually, the Modal for Draft Edit is not in AssistantView, so we need it here or pass the state down.
-           AssistantView handles the display. We need the Modal here.
-       */}
-       {/* Re-implementing the Draft Modal using the new components would be ideal, but for now let's reuse the logic but style the inputs */}
-
-       {/* Wait, I should probably migrate the Draft Edit Modal to use the new Inputs too.
-           Let's create a quick wrapper or just render it here using the new Modal/Input components.
-       */}
-
-       {/* I will use the Modal component from `src/components/Modal.tsx` but content inside will use new Inputs */}
-       {/* Wait, I didn't refactor `src/components/Modal.tsx` yet?
-           The plan didn't explicitly say to refactor it, but `BeansView` and `HistoryView` use it.
-           Let's check `src/components/Modal.tsx` content.
-       */}
-
-      {/*
-          I will finish App.tsx and then check Modal.tsx.
-          The Modal in BeansView and HistoryView uses the existing Modal component.
-          I should check if that Modal component needs styling updates to match the new theme.
-      */}
-
-      {/* Adding the Draft Edit Modal here for the Assistant View */}
-      {/* We need to import Modal and Inputs */}
       {isEditingDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-app-card w-full max-w-md rounded-3xl border border-app-border p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
@@ -240,17 +218,6 @@ function App() {
                 </button>
                 <h2 className="text-xl font-bold text-white mb-6">Edit Draft</h2>
                 <form onSubmit={handleSaveDraft} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                     <div className="space-y-4">
-                        {/* Re-using the logic from the old App.tsx but with new components */}
-                         {/* We need to import Input, Select etc inside App.tsx or create a subcomponent */}
-                         {/* For simplicity in this step, I'll inline the form using the imported components */}
-                     </div>
-                      {/* ... Wait, I can't write JSX in a comment.
-                          I need to actually implement the form here.
-                          I'll use the components I imported at the top of App.tsx
-                      */}
-
-                        {/* Importing components for this modal locally in App.tsx return */}
                         <DraftEditForm
                             draftBrew={draftBrew}
                             beans={beans}
