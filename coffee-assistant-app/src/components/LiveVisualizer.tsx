@@ -40,7 +40,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
       const width = canvas.width / window.devicePixelRatio;
       const height = canvas.height / window.devicePixelRatio;
 
-      timeRef.current += 0.005; // Slower time base for smoother waves
+      timeRef.current += 0.02; // Faster time base for high frequency movement
       ctx.clearRect(0, 0, width, height);
 
       // --- CONFIGURATION ---
@@ -66,7 +66,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
         amplitudeMultiplier = 0.2 + (normalizedVol * 1.5);
 
         // Speed up time slightly with volume
-        timeRef.current += normalizedVol * 0.02;
+        timeRef.current += normalizedVol * 0.05;
       }
 
       // We will draw 3 layers of waves
@@ -74,7 +74,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
         {
           colorStart: 'rgba(111, 78, 55, 0.4)', // Coffee Brown
           colorEnd: 'rgba(111, 78, 55, 0)',
-          speed: 1.0,
+          speed: 2.0,
           offset: 0,
           frequency: 0.002, // Lower frequency = wider waves
           heightOffset: 20 // Moves the wave up/down
@@ -82,7 +82,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
         {
           colorStart: 'rgba(168, 93, 29, 0.5)', // Dark Amber
           colorEnd: 'rgba(168, 93, 29, 0)',
-          speed: 1.5,
+          speed: 3.0,
           offset: 2,
           frequency: 0.003,
           heightOffset: 10
@@ -90,7 +90,7 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
         {
           colorStart: 'rgba(212, 163, 115, 0.6)', // Gold
           colorEnd: 'rgba(212, 163, 115, 0)',
-          speed: 2.0,
+          speed: 4.0,
           offset: 4,
           frequency: 0.004,
           heightOffset: 0
@@ -109,22 +109,21 @@ const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ analyserRef, isConnecte
          ctx.moveTo(0, baseHeight);
 
          for (let x = 0; x <= width; x += 10) {
-            // Sine wave formula: y = A * sin(B * x + C) + D
-            // A = Amplitude (waveHeight)
-            // B = Frequency
-            // C = Phase shift (time * speed + offset)
-            // D = Vertical Shift (baseHeight - some offset)
+            // Sine wave formula for Standing Wave: y = A * sin(B * x + Offset) * cos(Time * Speed)
+            // This creates nodes that don't travel horizontally.
 
             // We use multiple sines for organic look
-            const y1 = Math.sin(x * layer.frequency + timeRef.current * layer.speed + layer.offset);
-            const y2 = Math.sin(x * (layer.frequency * 2) + timeRef.current * layer.speed * 1.5);
+            // Note: separation of spatial (x) and temporal (time) terms
+            const y1 = Math.sin(x * layer.frequency + layer.offset) * Math.cos(timeRef.current * layer.speed);
+            const y2 = Math.sin(x * (layer.frequency * 2) + layer.offset * 1.5) * Math.cos(timeRef.current * layer.speed * 1.5);
 
             // Combine them and normalize slightly
             const normalizedY = (y1 + y2 * 0.5) / 1.5;
 
             // Calculate final Y position.
             // We want the wave to be at the bottom, so we subtract from height.
-            const y = height - (normalizedY * waveHeight) - (height * 0.2);
+            // Lift the baseline to height * 0.5 (middle of canvas) to be behind text
+            const y = height - (normalizedY * waveHeight) - (height * 0.5);
 
             ctx.lineTo(x, y);
          }
