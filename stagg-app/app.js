@@ -281,6 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         holdTime: document.getElementById('hold-time'),
         setHoldBtn: document.getElementById('set-hold-btn'),
+
+        turnOnBtn: document.getElementById('turn-on-btn'),
         
         infoAlt: document.getElementById('info-altitude'),
         infoLang: document.getElementById('info-language'),
@@ -354,13 +356,58 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    let lastState = null;
+
     kettle.onStateChange = (state) => {
         if (!state.connected) {
             updateUIConnected(false);
             return;
         }
+        lastState = state;
         renderState(state);
     };
+
+    // Turn On Button
+    if (els.turnOnBtn) {
+        els.turnOnBtn.addEventListener('click', async () => {
+            if (!lastState || !lastState.clock) {
+                alert('Wait for state update...');
+                return;
+            }
+
+            try {
+                // Calculate next minute
+                let h = lastState.clock.hour;
+                let m = lastState.clock.minute + 1;
+
+                if (m >= 60) {
+                    m = 0;
+                    h = (h + 1) % 24;
+                }
+
+                const targetTemp = lastState.target_temperature || 85;
+
+                // Feedback
+                const originalText = els.turnOnBtn.innerText;
+                els.turnOnBtn.innerText = "Turning on...";
+                els.turnOnBtn.disabled = true;
+
+                await kettle.setSchedule('once', h, m, targetTemp);
+
+                // Reset feedback
+                setTimeout(() => {
+                    els.turnOnBtn.innerText = originalText;
+                    els.turnOnBtn.disabled = false;
+                }, 2000);
+
+            } catch (e) {
+                console.error(e);
+                alert('Failed to turn on: ' + e);
+                els.turnOnBtn.innerText = "Turn On";
+                els.turnOnBtn.disabled = false;
+            }
+        });
+    }
 
     // Temp Control
     if (els.tempSlider) {
