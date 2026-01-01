@@ -57,6 +57,7 @@ class StaggEKGPro {
     }
 
     async requestDevice() {
+        console.log('Action: Requesting Bluetooth device...');
         this.device = await navigator.bluetooth.requestDevice({
             filters: [
                 { namePrefix: 'Stagg' },
@@ -66,27 +67,29 @@ class StaggEKGPro {
             optionalServices: OPTIONAL_SERVICES,
             acceptAllDevices: false 
         });
+        console.log('Action: Device selected:', this.device.name);
         this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
     }
 
     async connectGatt() {
         if (!this.device) throw new Error("No device selected");
         
-        console.log('Connecting to GATT Server...');
+        console.log('Action: Connecting to GATT Server...');
         this.server = await this.device.gatt.connect();
 
-        console.log('Getting Service...');
+        console.log('Action: Getting Service...');
         let service = null;
         
         for (const uuid of OPTIONAL_SERVICES) {
             try {
                 service = await this.server.getPrimaryService(uuid);
-                console.log('Found service:', uuid);
+                console.log('Action: Found service:', uuid);
                 try {
                     this.characteristic = await service.getCharacteristic(MAIN_CONFIG_UUID);
+                    console.log('Action: Found characteristic:', MAIN_CONFIG_UUID);
                     break; 
                 } catch (e) {
-                    console.log(`Characteristic not in service ${uuid}`);
+                    console.log(`Action: Characteristic not in service ${uuid}`);
                     service = null;
                 }
             } catch (e) {
@@ -98,12 +101,12 @@ class StaggEKGPro {
             throw new Error('Could not find Main Config Characteristic. Ensure the device is supported.');
         }
 
-        console.log('Starting Notifications...');
+        console.log('Action: Starting Notifications...');
         await this.characteristic.startNotifications();
         this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
 
         // Initial read
-        console.log('Reading initial state...');
+        console.log('Action: Reading initial state...');
         const value = await this.characteristic.readValue();
         this.updateState(value);
         
@@ -111,22 +114,26 @@ class StaggEKGPro {
     }
 
     async connect() {
+        console.log('Action: Connect sequence started');
         await this.requestDevice();
         await this.connectGatt();
     }
 
     async disconnect() {
+        console.log('Action: Disconnecting...');
         if (this.device && this.device.gatt.connected) {
             this.device.gatt.disconnect();
         }
     }
 
     onDisconnected() {
-        console.log('Device disconnected');
+        console.log('Action: Device disconnected');
         if (this.onStateChange) this.onStateChange({ connected: false });
     }
 
     handleNotification(event) {
+        // Notification log can be noisy, but let's log that we received one
+        // console.log('Action: Received notification'); 
         const value = event.target.value;
         this.updateState(value);
     }
@@ -160,7 +167,7 @@ class StaggEKGPro {
             scheduleMode = scheduleModeRaw ? 'once' : 'daily';
         }
 
-        return {
+        const parsed = {
             target_temperature: data[Payload.TARGET_TEMP] / 2.0,
             units: (data[Payload.CONTROL_FLAGS] & Flags.UNITS) ? 'celsius' : 'fahrenheit',
             pre_boil_enabled: !!(data[Payload.CONTROL_FLAGS] & Flags.PRE_BOIL),
@@ -178,6 +185,9 @@ class StaggEKGPro {
                 minute: data[Payload.CLOCK_MINUTES]
             }
         };
+        // Log state update (commented out to avoid spam, but useful for full "all actions" if state changes are considered actions)
+        // console.log('Action: State updated', parsed);
+        return parsed;
     }
 
     async writeState(newData) {
@@ -187,18 +197,23 @@ class StaggEKGPro {
         this.counter = (this.counter + 1) & 0xFF;
         newData[Payload.COUNTER] = this.counter;
 
+        const hex = [...newData].map(b => b.toString(16).padStart(2,'0')).join(' ');
+        console.log('Action: Writing state to device:', hex);
+
         try {
             await this.characteristic.writeValue(newData);
             // Optimistically update local state
             this.stateData = newData;
+            console.log('Action: Write successful');
         } catch (e) {
-            console.error("Write failed", e);
+            console.error("Action: Write failed", e);
             throw e;
         }
     }
 
     async setTemperature(tempC) {
         if (!this.stateData) return;
+        console.log(`Action: Setting temperature to ${tempC}°C`);
         const newData = new Uint8Array(this.stateData);
         newData[Payload.TARGET_TEMP] = Math.round(Math.max(0, Math.min(100, tempC)) * 2);
         await this.writeState(newData);
@@ -206,6 +221,7 @@ class StaggEKGPro {
 
     async setHoldTime(minutes) {
         if (!this.stateData) return;
+        console.log(`Action: Setting hold time to ${minutes} minutes`);
         const newData = new Uint8Array(this.stateData);
         newData[Payload.HOLD_TIME] = Math.max(0, Math.min(60, minutes));
         await this.writeState(newData);
@@ -213,6 +229,7 @@ class StaggEKGPro {
 
     async setSchedule(mode, hour, minute, tempC) {
         if (!this.stateData) return;
+        console.log(`Action: Setting schedule - Mode: ${mode}, Time: ${hour}:${minute}, Temp: ${tempC}°C`);
         
         // Implementation mirrors Python logic
         // If mode is OFF
@@ -319,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     if (els.connectBtn) {
         els.connectBtn.addEventListener('click', async () => {
+            console.log('UI Action: Connect button clicked');
             if (els.errorMsg) els.errorMsg.classList.add('hidden');
             
             // We don't show connecting UI immediately for WebBluetooth because the picker needs to be seen first.
@@ -328,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             try {
                 // 1. Picker Phase
-                console.log('Requesting Bluetooth Device...');
+                console.log('UI Action: Requesting Bluetooth Device...');
                 await kettle.requestDevice(); 
                 
                 // 2. Connecting Phase (User selected device)
@@ -339,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUIConnecting(false); // Hide connecting view
                 
             } catch (e) {
+                console.error('UI Action: Connection failed', e);
                 if (els.errorMsg) {
                     els.errorMsg.innerText = e.message;
                     els.errorMsg.classList.remove('hidden');
@@ -351,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (els.disconnectBtn) {
         els.disconnectBtn.addEventListener('click', () => {
+            console.log('UI Action: Disconnect button clicked');
             kettle.disconnect();
             updateUIConnected(false);
         });
@@ -370,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Turn On Button
     if (els.turnOnBtn) {
         els.turnOnBtn.addEventListener('click', async () => {
+            console.log('UI Action: Turn On button clicked');
             if (!lastState || !lastState.clock) {
                 alert('Wait for state update...');
                 return;
@@ -392,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.turnOnBtn.innerText = "Turning on...";
                 els.turnOnBtn.disabled = true;
 
+                console.log(`UI Action: Auto-turning on by scheduling for ${h}:${m} at ${targetTemp}°C`);
                 await kettle.setSchedule('once', h, m, targetTemp);
 
                 // Reset feedback
@@ -401,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 2000);
 
             } catch (e) {
-                console.error(e);
+                console.error('UI Action: Turn on failed', e);
                 alert('Failed to turn on: ' + e);
                 els.turnOnBtn.innerText = "Turn On";
                 els.turnOnBtn.disabled = false;
@@ -415,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
             els.tempDisplay.innerText = e.target.value;
         });
         els.tempSlider.addEventListener('change', (e) => {
+            console.log(`UI Action: Temperature slider changed to ${e.target.value}`);
             kettle.setTemperature(parseFloat(e.target.value));
         });
     }
@@ -422,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hold Control
     if (els.setHoldBtn) {
         els.setHoldBtn.addEventListener('click', () => {
+            console.log(`UI Action: Set Hold button clicked, value: ${els.holdTime.value}`);
             kettle.setHoldTime(parseInt(els.holdTime.value));
         });
     }
@@ -436,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Schedule Save
     if (els.saveSchedBtn) {
         els.saveSchedBtn.addEventListener('click', async () => {
+            console.log('UI Action: Save Schedule button clicked');
             try {
                 let h = 0, m = 0;
                 
@@ -450,12 +475,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     m = parseInt(els.schedM.value, 10);
                 }
 
-                await kettle.setSchedule(
-                    els.schedMode ? els.schedMode.value : 'off',
-                    h || 0,
-                    m || 0,
-                    els.schedTemp ? parseFloat(els.schedTemp.value) : 85
-                );
+                const mode = els.schedMode ? els.schedMode.value : 'off';
+                const temp = els.schedTemp ? parseFloat(els.schedTemp.value) : 85;
+                
+                console.log(`UI Action: Saving schedule - Mode: ${mode}, Time: ${h}:${m}, Temp: ${temp}°C`);
+                await kettle.setSchedule(mode, h, m, temp);
                 
                 const s = document.getElementById('schedule-status');
                 if (s) {
@@ -463,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => s.classList.add('opacity-0'), 2000);
                 }
             } catch (e) {
+                console.error('UI Action: Save schedule failed', e);
                 alert('Failed to set schedule: ' + e);
             }
         });
