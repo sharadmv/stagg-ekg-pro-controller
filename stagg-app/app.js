@@ -275,6 +275,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const kettle = new StaggEKGPro();
 
+    // Debug State
+    let isDebugMode = false;
+
+    function logToDebug(method, ...args) {
+        if (!isDebugMode) return;
+
+        const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+        const argsStr = args.map(a => {
+            if (typeof a === 'object') return JSON.stringify(a);
+            return String(a);
+        }).join(', ');
+
+        const line = `[${timestamp}] ${method}(${argsStr})\n`;
+        const logEl = document.getElementById('debug-console-logs');
+        if (logEl) {
+            logEl.textContent += line;
+            // Scroll to bottom
+            const container = document.getElementById('debug-container');
+            if (container) container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    // Attach logger to kettle instance for internal use if we want,
+    // or we can just access the global function if we move it or expose it.
+    // For now, we will monkey-patch or modify the class methods below or in-place.
+    // However, since we are inside the DOMContentLoaded and the class is defined outside,
+    // we need a way to hook into it.
+
+    // Better approach: pass a logger callback to the class or monkeypatch the instance.
+    // Let's monkeypatch the instance methods for the requested instrumentation.
+    const methodsToLog = ['requestDevice', 'connectGatt', 'disconnect', 'setTemperature', 'setHoldTime', 'setSchedule', 'writeState'];
+
+    methodsToLog.forEach(methodName => {
+        const originalMethod = kettle[methodName];
+        kettle[methodName] = async function(...args) {
+            logToDebug(methodName, ...args);
+            return originalMethod.apply(this, args);
+        };
+    });
+
+
     // Elements
     const els = {
         scanSection: document.getElementById('scan-section'),
@@ -308,8 +349,42 @@ document.addEventListener('DOMContentLoaded', () => {
         // Views
         scanContent: document.getElementById('scan-content'),
         connectingContent: document.getElementById('connecting-content'),
-        connectingStatus: document.getElementById('connecting-status')
+        connectingStatus: document.getElementById('connecting-status'),
+
+        // Debug
+        debugBtn: document.getElementById('debug-btn'),
+        debugOverlay: document.getElementById('debug-overlay'),
+        closeDebugBtn: document.getElementById('close-debug-btn'),
+        debugModeToggle: document.getElementById('debug-mode-toggle'),
+        clearLogsBtn: document.getElementById('clear-logs-btn'),
+        debugLogContainer: document.getElementById('debug-console-logs')
     };
+
+    // Debug UI Event Listeners
+    if (els.debugBtn && els.debugOverlay) {
+        els.debugBtn.addEventListener('click', () => {
+            els.debugOverlay.classList.remove('hidden');
+        });
+    }
+
+    if (els.closeDebugBtn && els.debugOverlay) {
+        els.closeDebugBtn.addEventListener('click', () => {
+            els.debugOverlay.classList.add('hidden');
+        });
+    }
+
+    if (els.debugModeToggle) {
+        els.debugModeToggle.addEventListener('change', (e) => {
+            isDebugMode = e.target.checked;
+            console.log('Debug mode:', isDebugMode);
+        });
+    }
+
+    if (els.clearLogsBtn && els.debugLogContainer) {
+        els.clearLogsBtn.addEventListener('click', () => {
+            els.debugLogContainer.textContent = '';
+        });
+    }
 
     function updateUIConnecting(isConnecting, statusText) {
         if (!els.scanContent || !els.connectingContent) return;
