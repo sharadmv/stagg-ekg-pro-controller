@@ -75,7 +75,7 @@ export class AcaiaScale {
 
       if (notifyChar && this.writeChar) {
         await notifyChar.startNotifications();
-        notifyChar.addEventListener('characteristicvaluechanged', (e) => this.handleNotification(e));
+        notifyChar.addEventListener('characteristicvaluechanged', (e: Event) => this.handleNotification(e));
 
         // Initial Handshake (encode_id in python)
         await this.write(11, [0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34]);
@@ -138,7 +138,7 @@ export class AcaiaScale {
   public async write(type: number, payload: number[]) {
     if (!this.writeChar) return;
     const msg = this.encode(type, payload);
-    await this.writeChar.writeValue(msg);
+    await this.writeChar.writeValueWithResponse(msg as BufferSource);
   }
 
   private encode(msgType: number, payload: number[]): Uint8Array {
@@ -159,8 +159,9 @@ export class AcaiaScale {
     return byteMsg;
   }
 
-  private handleNotification(event: any) {
-    const value = (event.target as any).value as DataView;
+  private handleNotification(event: Event) {
+    const target = event.target as BluetoothRemoteGATTCharacteristic;
+    const value = target.value;
     if (!value || value.byteLength < 3) return;
 
     const hex = Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength))
