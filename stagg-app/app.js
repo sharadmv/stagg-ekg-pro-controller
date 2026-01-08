@@ -357,8 +357,89 @@ document.addEventListener('DOMContentLoaded', () => {
         closeDebugBtn: document.getElementById('close-debug-btn'),
         debugModeToggle: document.getElementById('debug-mode-toggle'),
         clearLogsBtn: document.getElementById('clear-logs-btn'),
-        debugLogContainer: document.getElementById('debug-console-logs')
+        debugLogContainer: document.getElementById('debug-console-logs'),
+
+        // Last Schedule Elements
+        lastSchedCard: document.getElementById('last-schedule-card'),
+        lastSchedTime: document.getElementById('last-sched-time'),
+        lastSchedTemp: document.getElementById('last-sched-temp'),
+        lastSchedMode: document.getElementById('last-sched-mode'),
+        applyLastSchedBtn: document.getElementById('apply-last-sched-btn')
     };
+
+    // Last Schedule Logic
+    const LAST_SCHED_KEY = 'stagg_last_schedule';
+
+    function updateLastScheduleUI() {
+        if (!els.lastSchedCard) return;
+
+        try {
+            const raw = localStorage.getItem(LAST_SCHED_KEY);
+            if (!raw) {
+                els.lastSchedCard.classList.add('hidden');
+                return;
+            }
+
+            const data = JSON.parse(raw);
+            if (!data || !data.mode) {
+                els.lastSchedCard.classList.add('hidden');
+                return;
+            }
+
+            // Populate UI
+            if (els.lastSchedTime) els.lastSchedTime.innerText = `${String(data.hour).padStart(2,'0')}:${String(data.minute).padStart(2,'0')}`;
+            if (els.lastSchedTemp) els.lastSchedTemp.innerText = `${data.temperature_celsius}°C`;
+            if (els.lastSchedMode) {
+                els.lastSchedMode.innerText = data.mode;
+                els.lastSchedMode.className = `text-[10px] font-medium uppercase tracking-wider mt-1 px-2 py-0.5 rounded inline-block border ${
+                    data.mode === 'daily'
+                    ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+                    : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                }`;
+            }
+
+            // Show Card
+            els.lastSchedCard.classList.remove('hidden');
+        } catch (e) {
+            console.error('Error reading last schedule:', e);
+            els.lastSchedCard.classList.add('hidden');
+        }
+    }
+
+    // Initialize Last Schedule UI
+    updateLastScheduleUI();
+
+    if (els.applyLastSchedBtn) {
+        els.applyLastSchedBtn.addEventListener('click', async () => {
+             try {
+                const raw = localStorage.getItem(LAST_SCHED_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+
+                // Feedback
+                const originalContent = els.applyLastSchedBtn.innerHTML;
+                els.applyLastSchedBtn.disabled = true;
+                els.applyLastSchedBtn.classList.add('bg-emerald-600', 'text-white');
+                els.applyLastSchedBtn.classList.remove('bg-zinc-800', 'hover:bg-zinc-700');
+
+                console.log('UI Action: Applying last schedule:', data);
+                await kettle.setSchedule(data.mode, data.hour, data.minute, data.temperature_celsius);
+
+                // Revert button after delay
+                setTimeout(() => {
+                    els.applyLastSchedBtn.disabled = false;
+                    els.applyLastSchedBtn.innerHTML = originalContent;
+                    els.applyLastSchedBtn.classList.remove('bg-emerald-600', 'text-white');
+                    els.applyLastSchedBtn.classList.add('bg-zinc-800', 'hover:bg-zinc-700');
+                }, 1000);
+
+            } catch (e) {
+                console.error('UI Action: Apply last schedule failed', e);
+                alert('Failed to apply: ' + e);
+                els.applyLastSchedBtn.disabled = false;
+            }
+        });
+    }
 
     // Debug UI Event Listeners
     if (els.debugBtn && els.debugOverlay) {
@@ -558,6 +639,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`UI Action: Saving schedule - Mode: ${mode}, Time: ${h}:${m}, Temp: ${temp}°C`);
                 await kettle.setSchedule(mode, h, m, temp);
                 
+                // Save to LocalStorage
+                if (mode !== 'off') {
+                    const saveData = {
+                        mode: mode,
+                        hour: h,
+                        minute: m,
+                        temperature_celsius: temp
+                    };
+                    localStorage.setItem(LAST_SCHED_KEY, JSON.stringify(saveData));
+                    updateLastScheduleUI();
+                }
+
                 const s = document.getElementById('schedule-status');
                 if (s) {
                     s.classList.remove('opacity-0');

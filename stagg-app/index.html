@@ -206,6 +206,27 @@
                 </div>
             </div>
 
+            <!-- Last Schedule Card -->
+            <div id="last-schedule-card" class="hidden bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-lg relative overflow-hidden mb-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-1 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                            Restore Previous
+                        </h2>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span id="last-sched-time" class="text-2xl font-light text-white tabular-nums">--:--</span>
+                            <span class="text-xs text-zinc-600">at</span>
+                            <span id="last-sched-temp" class="text-lg font-light text-zinc-300 tabular-nums">--°C</span>
+                        </div>
+                        <div id="last-sched-mode" class="text-[10px] text-emerald-500 font-medium uppercase tracking-wider mt-1 bg-emerald-500/10 px-2 py-0.5 rounded inline-block border border-emerald-500/20">--</div>
+                    </div>
+                    <button id="apply-last-sched-btn" class="bg-zinc-800 hover:bg-zinc-700 text-white p-3 rounded-2xl transition-all active:scale-95 border border-zinc-700/50 shadow-lg group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-180 transition-transform duration-500"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                </div>
+            </div>
+
             <!-- Manual Temp Card (Secondary) -->
             <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-lg">
                  <div class="flex items-center justify-between mb-4">
