@@ -16,7 +16,7 @@ logger = logging.getLogger("kettle-server")
 # Global State
 current_device_name: Optional[str] = None
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 # Models
 class TargetTempRequest(BaseModel):
