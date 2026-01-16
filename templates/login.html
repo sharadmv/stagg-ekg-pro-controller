@@ -73,6 +73,10 @@
         <form action="/authorize" method="post">
             <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
             <input type="hidden" name="state" value="{{ state }}">
+            <div style="margin-bottom: 24px;">
+                <input type="text" name="username" placeholder="Username" required 
+                       style="width: 100%; padding: 12px; border: 1px solid #d2d2d7; border-radius: 12px; font-size: 15px; box-sizing: border-box; outline: none;">
+            </div>
             <button type="submit">Authorize</button>
         </form>
     </div>

@@ -3,3 +3,4 @@ GEMINI.md
 node_modules
 .python-version
 uv.lock
+kettle_oauth.db

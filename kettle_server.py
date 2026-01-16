@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import sqlite3
+import secrets
+import time
 from contextlib import asynccontextmanager
 from typing import Optional
-
-from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from bleak import BleakScanner
 
@@ -17,9 +20,91 @@ logger = logging.getLogger("kettle-server")
 
 # Configuration
 DEFAULT_KETTLE_NAME = "EKG-a8-41-f0" # Default name for Smart Home connection
+DB_PATH = "kettle_oauth.db"
+
+class DatabaseManager:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self._init_db()
+
+    def _init_db(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tokens (
+                    access_token TEXT PRIMARY KEY,
+                    refresh_token TEXT,
+                    user_id TEXT,
+                    expires_at INTEGER
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS auth_codes (
+                    code TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    expires_at INTEGER
+                )
+            """)
+            conn.commit()
+
+    def store_auth_code(self, code, user_id, expires_in=300):
+        expires_at = int(time.time()) + expires_in
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("INSERT INTO auth_codes (code, user_id, expires_at) VALUES (?, ?, ?)",
+                         (code, user_id, expires_at))
+            conn.commit()
+
+    def validate_auth_code(self, code):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT user_id, expires_at FROM auth_codes WHERE code = ?", (code,))
+            row = cursor.fetchone()
+            if row:
+                user_id, expires_at = row
+                # Delete code after use
+                conn.execute("DELETE FROM auth_codes WHERE code = ?", (code,))
+                conn.commit()
+                if expires_at > time.time():
+                    return user_id
+            return None
+
+    def store_tokens(self, access_token, refresh_token, user_id, expires_in=3600):
+        expires_at = int(time.time()) + expires_in
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("INSERT OR REPLACE INTO tokens (access_token, refresh_token, user_id, expires_at) VALUES (?, ?, ?, ?)",
+                         (access_token, refresh_token, user_id, expires_at))
+            conn.commit()
+
+    def get_token(self, access_token):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT user_id, expires_at FROM tokens WHERE access_token = ?", (access_token,))
+            row = cursor.fetchone()
+            if row:
+                user_id, expires_at = row
+                if expires_at > time.time():
+                    return user_id
+            return None
+
+    def validate_refresh_token(self, refresh_token):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT user_id FROM tokens WHERE refresh_token = ?", (refresh_token,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+db = DatabaseManager(DB_PATH)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+async def verify_token(token: str = Depends(oauth2_scheme)):
+    user_id = db.get_token(token)
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user_id
 
 # --- OAuth2 (Simplified for Google Home) ---
 @app.get("/authorize", response_class=HTMLResponse)
@@ -36,13 +121,13 @@ async def authorize_page(request: Request, redirect_uri: str, state: str, client
     })
 
 @app.post("/authorize")
-async def authorize_submit(redirect_uri: str = Form(...), state: str = Form(...)):
+async def authorize_submit(redirect_uri: str = Form(...), state: str = Form(...), username: str = Form(...)):
     """
     Handle authorization form submission.
     Redirects back to Google with a temporary auth code.
     """
-    # In a real app, you'd generate a random code and store it.
-    code = "sample-auth-code-123"
+    code = secrets.token_urlsafe(16)
+    db.store_auth_code(code, username)
     url = f"{redirect_uri}?code={code}&state={state}"
     return RedirectResponse(url=url, status_code=302)
 
@@ -59,25 +144,34 @@ async def token(
     Google sends requests as application/x-www-form-urlencoded.
     """
     if grant_type == "authorization_code":
-        # In a real app, verify 'code', 'client_id' and 'client_secret'
-        logger.info(f"Exchanging code {code} for tokens")
+        user_id = db.validate_auth_code(code)
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid or expired authorization code")
+        logger.info(f"Exchanging code for tokens for user {user_id}")
     elif grant_type == "refresh_token":
-        # In a real app, verify 'refresh_token'
-        logger.info("Refreshing access token")
+        user_id = db.validate_refresh_token(refresh_token)
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid refresh token")
+        logger.info(f"Refreshing access token for user {user_id}")
     else:
         raise HTTPException(status_code=400, detail="Invalid grant_type")
+
+    access_token = secrets.token_urlsafe(32)
+    refresh_token = secrets.token_urlsafe(32)
+    expires_in = 3600
+    db.store_tokens(access_token, refresh_token, user_id, expires_in)
 
     # Return tokens in the format Google expects
     return {
         "token_type": "bearer",
-        "access_token": "access-token-123",
-        "refresh_token": "refresh-token-456",
-        "expires_in": 3600
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_in": expires_in
     }
 
 # --- Smart Home Fulfillment ---
 @app.post("/smarthome")
-async def smarthome(request: Request):
+async def smarthome(request: Request, user_id: str = Depends(verify_token)):
     data = await request.json()
     logger.debug(f"Smart Home Request: {data}")
     request_id = data.get("requestId")
@@ -91,7 +185,7 @@ async def smarthome(request: Request):
     
     if intent == "action.devices.SYNC":
         payload = {
-            "agentUserId": "user123",
+            "agentUserId": user_id,
             "devices": [{
                 "id": "stagg_kettle_1",
                 "type": "action.devices.types.KETTLE",
@@ -323,7 +417,7 @@ kettle_manager = KettleManager()
 # Routes
 
 @app.get("/api/state")
-async def get_state(device_name: Optional[str] = None):
+async def get_state(device_name: Optional[str] = None, _token: str = Depends(verify_token)):
     """
     Connects to the kettle, gets state, and disconnects.
     """
@@ -335,21 +429,21 @@ async def get_state(device_name: Optional[str] = None):
         return state
 
 @app.post("/api/temperature")
-async def set_temperature(req: TargetTempRequest, device_name: Optional[str] = None):
+async def set_temperature(req: TargetTempRequest, device_name: Optional[str] = None, _token: str = Depends(verify_token)):
     """Connects, sets target temperature, and disconnects."""
     async with kettle_manager.get_kettle() as k:
         await k.set_target_temperature(req.temperature)
         return {"status": "ok", "target": req.temperature}
 
 @app.post("/api/hold")
-async def set_hold(req: HoldRequest, device_name: Optional[str] = None):
+async def set_hold(req: HoldRequest, device_name: Optional[str] = None, _token: str = Depends(verify_token)):
     """Connects, sets hold time, and disconnects."""
     async with kettle_manager.get_kettle() as k:
         await k.set_hold_time(req.minutes)
         return {"status": "ok", "hold_minutes": req.minutes}
 
 @app.post("/api/schedule")
-async def set_schedule(req: ScheduleRequest, device_name: Optional[str] = None):
+async def set_schedule(req: ScheduleRequest, device_name: Optional[str] = None, _token: str = Depends(verify_token)):
     """Connects, sets schedule, and disconnects."""
     async with kettle_manager.get_kettle() as k:
         mode_map = {
