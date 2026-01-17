@@ -132,11 +132,38 @@ export function useGoogleSheets() {
         return await response.json();
     }, [accessToken]);
 
+    const clearSheetData = useCallback(async (spreadsheetId: string, range: string) => {
+        if (!accessToken) throw new Error('Not authenticated');
+
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:clear`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                setAccessToken(null);
+                throw new Error('Unauthorized - please re-authenticate');
+            }
+            const err = await response.json();
+            throw new Error(err.error?.message || 'Failed to clear sheet');
+        }
+    }, [accessToken]);
+
     const backup = useCallback(async (spreadsheetId: string, logs: BrewAttempt[], beans: Bean[]) => {
         setIsLoading(true);
         setError(null);
         try {
             await ensureSheetsExist(spreadsheetId);
+
+            // Clear existing data before backup to avoid stale rows
+            await clearSheetData(spreadsheetId, 'Brews!A:K');
+            await clearSheetData(spreadsheetId, 'Beans!A:J');
 
             // Backup Brews
             const brewHeaders = ['ID', 'Date', 'Brewer', 'BeanID', 'Grinder', 'Setting', 'Ratio', 'Temp', 'Technique', 'Extraction', 'Enjoyment'];
@@ -195,32 +222,36 @@ export function useGoogleSheets() {
             const brewsResp = await fetchSheetsData(spreadsheetId, 'Brews!A2:K1000');
             const beansResp = await fetchSheetsData(spreadsheetId, 'Beans!A2:J1000');
 
-            const logs: BrewAttempt[] = (brewsResp.values || []).map((row: any[]) => ({
-                id: row[0],
-                date: row[1],
-                brewer: row[2],
-                beanId: row[3],
-                grinder: row[4],
-                grinderSetting: row[5],
-                ratio: row[6],
-                waterTemp: Number(row[7]),
-                technique: row[8],
-                extraction: row[9] ? Number(row[9]) : undefined,
-                enjoyment: Number(row[10]),
-            }));
+            const logs: BrewAttempt[] = (brewsResp.values || [])
+                .filter((row: any[]) => row && row[0]) // Filter empty rows or rows missing ID
+                .map((row: any[]) => ({
+                    id: row[0],
+                    date: row[1],
+                    brewer: row[2],
+                    beanId: row[3],
+                    grinder: row[4],
+                    grinderSetting: row[5],
+                    ratio: row[6],
+                    waterTemp: Number(row[7]),
+                    technique: row[8],
+                    extraction: row[9] ? Number(row[9]) : undefined,
+                    enjoyment: Number(row[10]),
+                }));
 
-            const beans: Bean[] = (beansResp.values || []).map((row: any[]) => ({
-                id: row[0],
-                roastery: row[1],
-                name: row[2],
-                process: row[3],
-                origin: row[4],
-                varietal: row[5],
-                roastLevel: row[6],
-                notes: row[7],
-                url: row[8],
-                roastDate: row[9],
-            }));
+            const beans: Bean[] = (beansResp.values || [])
+                .filter((row: any[]) => row && row[0]) // Filter empty rows or rows missing ID
+                .map((row: any[]) => ({
+                    id: row[0],
+                    roastery: row[1],
+                    name: row[2],
+                    process: row[3],
+                    origin: row[4],
+                    varietal: row[5],
+                    roastLevel: row[6],
+                    notes: row[7],
+                    url: row[8],
+                    roastDate: row[9],
+                }));
 
             return { logs, beans };
         } catch (e: any) {
