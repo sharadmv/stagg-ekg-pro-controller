@@ -28,8 +28,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          rm -f package-lock.json
           npm install
+          # Explicitly install the Linux binary if it's missing, which is a common issue with npm + rollup on CI
+          npm install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Build all apps
         run: npm run build
