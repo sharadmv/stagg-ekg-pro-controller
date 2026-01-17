@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-assistant-v4';
+const CACHE_NAME = 'coffee-assistant-v5';
 const ASSETS = [
     './index.html',
     './favicon.svg',
