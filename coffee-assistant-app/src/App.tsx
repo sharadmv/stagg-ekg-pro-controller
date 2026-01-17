@@ -358,11 +358,12 @@ function DraftEditForm({ draftBrew, beans }: any) {
           defaultValue={draftBrew?.extraction || ''}
         />
         <UIInput
-          label="Enjoyment (1-10)"
+          label="Enjoyment (0-5)"
           name="enjoyment"
           type="number"
-          min="1"
-          max="10"
+          min="0"
+          max="5"
+          step="0.5"
           defaultValue={draftBrew?.enjoyment || ''}
         />
       </div>

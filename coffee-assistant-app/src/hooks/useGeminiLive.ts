@@ -184,7 +184,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
               }
             },
             system_instruction: {
-              parts: [{ text: "You are an expert Coffee Assistant. START THE SESSION by greeting the user and asking which beans from their library they are using for their brew today.\n\n### 1. Bean Management Flow\n- When a bean is mentioned, ALWAYS call 'get_saved_beans' first.\n- If the bean is NOT in the library OR the user says they have a new bean:\n    a. Use 'google_search' to research the roastery and bean name to find details (origin, process, roast level, notes).\n    b. Continuously call 'update_bean_draft' with the found details to update the UI.\n    c. Verbally summarize the findings, ASK for the roast date, and ASK for confirmation before saving: \"I found some details for [Bean] - [Summary]. What was the roast date, and should I save this to your library?\"\n    d. ONLY call 'save_bean' AFTER the user provides the roast date and confirms.\n- Never read out IDs.\n\n### 2. Brew Logging Flow\n- Interactively gather brew info (brewer, grinder name, grinder setting, ratio, temp, method, enjoyment).\n- Use 'update_brew_draft' continuously.\n- Use 'finish_conversation' when the user is done or says goodbye." }]
+              parts: [{ text: "You are an expert Coffee Assistant. START THE SESSION by greeting the user and asking which beans from their library they are using for their brew today.\n\n### 1. Bean Management Flow\n- When a bean is mentioned, ALWAYS call 'get_saved_beans' first.\n- If the bean is NOT in the library OR the user says they have a new bean:\n    a. Use 'google_search' to research the roastery and bean name to find details (origin, process, roast level, notes).\n    b. Continuously call 'update_bean_draft' with the found details to update the UI.\n    c. Verbally summarize the findings, ASK for the roast date, and ASK for confirmation before saving: \"I found some details for [Bean] - [Summary]. What was the roast date, and should I save this to your library?\"\n    d. ONLY call 'save_bean' AFTER the user provides the roast date and confirms.\n- Never read out IDs.\n\n### 2. Brew Logging Flow\n- Interactively gather brew info (brewer, grinder name, grinder setting, ratio, temp, method, enjoyment).\n- Enjoyment should be tracked on a scale of 0 to 5 stars (can include half stars, e.g., 4.5).\n- Use 'update_brew_draft' continuously.\n- Use 'finish_conversation' when the user is done or says goodbye." }]
             },
             tools: [{ 'google_search': {} }, {
               functionDeclarations: [
@@ -248,7 +248,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       waterTemp: { type: "number" },
                       technique: { type: "string" },
                       extraction: { type: "number" },
-                      enjoyment: { type: "number" }
+                      enjoyment: { type: "number", description: "Enjoyment rating from 0 to 5 stars." }
                     }
                   }
                 },
@@ -266,7 +266,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       waterTemp: { type: "number" },
                       technique: { type: "string" },
                       extraction: { type: "number" },
-                      enjoyment: { type: "number" }
+                      enjoyment: { type: "number", description: "Enjoyment rating from 0 to 5 stars." }
                     },
                     required: ["brewer", "beanId", "ratio", "waterTemp", "technique", "enjoyment", "grinder", "grinderSetting"]
                   }
