@@ -47,6 +47,9 @@ jobs:
           # Copy coffee assistant app
           mkdir -p _site/coffee_assistant
           cp -r apps/assistant/dist/* _site/coffee_assistant/
+          # Copy acaia app
+          mkdir -p _site/acaia
+          cp -r apps/acaia/dist/* _site/acaia/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
