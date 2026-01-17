@@ -27,10 +27,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: |
-          npm install
-          # Explicitly install the Linux binary if it's missing, which is a common issue with npm + rollup on CI
-          npm install --no-save @rollup/rollup-linux-x64-gnu
+        run: npm install
 
       - name: Build all apps
         run: npm run build
