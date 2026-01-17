@@ -135,13 +135,19 @@
             <button id="resetBtn" class="btn-reset" disabled>RESET</button>
         </div>
 
+        <div class="chart-container" style="width: 100%; height: 200px; margin-top: 20px;">
+            <canvas id="weightChart"></canvas>
+        </div>
+
         <div class="status" id="status">Disconnected</div>
         <div id="log"
             style="margin-top:20px; font-family:monospace; font-size:10px; color:#ccc; height:100px; overflow-y:auto; text-align:left; width:100%; border-top:1px solid #eee;">
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import Chart from 'chart.js/auto';
+
         // --- Constants ---
         const SERVICE_UUID = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
         const CHAR_WRITE = "49535343-8841-43f4-a8d4-ecbe34729bb3";
@@ -154,6 +160,10 @@
         // --- State ---
         let device, server, service, writeChar;
         let heartbeatInterval;
+        let weightChart;
+        let currentExperimentTime = 0.0;
+        let lastTimerPacketTime = Date.now();
+        let isTimerRunning = false;
 
         // --- References ---
         const connectBtn = document.getElementById('connectBtn');
@@ -162,6 +172,40 @@
         const statusDiv = document.getElementById('status');
         const logDiv = document.getElementById('log');
         const btns = ['tareBtn', 'timerBtn', 'stopBtn', 'resetBtn'].map(id => document.getElementById(id));
+        const ctx = document.getElementById('weightChart').getContext('2d');
+
+        function initChart() {
+            weightChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Weight (g)',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Time (s)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        initChart();
 
         function log(msg) {
             console.log(msg);
@@ -237,6 +281,8 @@
                 statusDiv.textContent = "Connected";
                 connectBtn.textContent = "Disconnect";
                 btns.forEach(b => b.disabled = false);
+
+                resetChart();
 
             } catch (err) {
                 console.error(err);
@@ -324,6 +370,7 @@
                                         if (p.length === 6) {
                                             const weight = decodeWeight(p);
                                             weightDisplay.textContent = weight.toFixed(1);
+                                            updateChart(weight);
                                         }
                                         offset += 6;
                                     } else { break; }
@@ -333,8 +380,13 @@
                                     if (offset + 3 <= end + 1) {
                                         const min = data[offset];
                                         const sec = data[offset + 1];
-                                        // const ds = data[offset+2];
+                                        const ds = data[offset + 2];
                                         timerDisplay.textContent = `${pad(min)}:${pad(sec)}`;
+
+                                        // Update Time
+                                        currentExperimentTime = (min * 60) + sec + (ds / 10.0);
+                                        lastTimerPacketTime = Date.now();
+
                                         offset += 3; // Timer payload length
                                     } else { break; }
                                 } else {
@@ -366,11 +418,19 @@
                                 const p = data.subarray(payloadStart);
                                 const weight = decodeWeight(p);
                                 weightDisplay.textContent = weight.toFixed(1);
+                                updateChart(weight);
                             }
                         } else if (cmd === 0x07) { // Timer
                             const payloadStart = i + 3;
                             const p = data.subarray(payloadStart);
                             timerDisplay.textContent = `${pad(p[0])}:${pad(p[1])}`;
+                            if (p.length >= 3) {
+                                const min = p[0];
+                                const sec = p[1];
+                                const ds = p[2];
+                                currentExperimentTime = (min * 60) + sec + (ds / 10.0);
+                                lastTimerPacketTime = Date.now();
+                            }
                         }
                         return;
                     }
@@ -398,6 +458,38 @@
 
         function pad(n) { return n < 10 ? '0' + n : n; }
 
+        let lastChartUpdate = 0;
+
+        function updateChart(weight) {
+            if (!isTimerRunning) return;
+
+            // Interpolate time for smooth plotting between timer packets
+            const timeSinceTimer = (Date.now() - lastTimerPacketTime) / 1000;
+            const interpolatedTime = currentExperimentTime + timeSinceTimer;
+
+            weightChart.data.labels.push(interpolatedTime);
+            weightChart.data.datasets[0].data.push(weight);
+
+            if (weightChart.data.labels.length > 3000) {
+                weightChart.data.labels.shift();
+                weightChart.data.datasets[0].data.shift();
+            }
+
+            const now = Date.now();
+            if (now - lastChartUpdate > 50) { // Throttle to 20Hz
+                weightChart.update('none');
+                lastChartUpdate = now;
+            }
+        }
+
+        function resetChart() {
+            currentExperimentTime = 0.0;
+            lastTimerPacketTime = Date.now();
+            weightChart.data.labels = [];
+            weightChart.data.datasets[0].data = [];
+            weightChart.update();
+        }
+
         // --- Controls ---
 
         connectBtn.onclick = () => {
@@ -413,16 +505,21 @@
         document.getElementById('timerBtn').onclick = async () => {
             log("Sending START...");
             await writeChar.writeValueWithoutResponse(encodeCommand(13, [0, 0]));
+            isTimerRunning = true;
+            resetChart();
         };
 
         document.getElementById('stopBtn').onclick = async () => {
             log("Sending STOP...");
             await writeChar.writeValueWithoutResponse(encodeCommand(13, [0, 2]));
+            isTimerRunning = false;
         };
 
         document.getElementById('resetBtn').onclick = async () => {
             log("Sending RESET...");
             await writeChar.writeValueWithoutResponse(encodeCommand(13, [0, 1]));
+            isTimerRunning = false;
+            resetChart();
         };
 
     </script>
