@@ -5,6 +5,7 @@ import { AssistantView } from './views/AssistantView';
 import { BeansView } from './views/BeansView';
 import { HistoryView } from './views/HistoryView';
 import { SettingsView } from './views/SettingsView';
+import { useGoogleSheets } from './hooks/useGoogleSheets';
 import type { BrewAttempt, Bean } from './types/gemini';
 
 type Tab = 'assistant' | 'history' | 'beans' | 'settings';
@@ -19,20 +20,34 @@ function App() {
   const [editingHistoryLog, setEditingHistoryLog] = useState<BrewAttempt | null>(null);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
 
+  // Google Sheets state
+  const [googleClientId, setGoogleClientId] = useState(() => localStorage.getItem('google_client_id') || '');
+  const [spreadsheetId, setSpreadsheetId] = useState(() => localStorage.getItem('google_spreadsheet_id') || '');
+
+  const { authenticate, backup, load, accessToken, isLoading: isSyncing, error: syncError } = useGoogleSheets();
+
   const loadData = useCallback(() => {
     setBrewLogs(JSON.parse(localStorage.getItem('brew_logs') || '[]'));
     setBeans(JSON.parse(localStorage.getItem('coffee_beans') || '[]'));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-  
-  useEffect(() => { 
-    localStorage.setItem('gemini_api_key', apiKey); 
+
+  useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey);
   }, [apiKey]);
 
-  useEffect(() => { 
-    localStorage.setItem('gemini_voice', voice); 
+  useEffect(() => {
+    localStorage.setItem('gemini_voice', voice);
   }, [voice]);
+
+  useEffect(() => {
+    localStorage.setItem('google_client_id', googleClientId);
+  }, [googleClientId]);
+
+  useEffect(() => {
+    localStorage.setItem('google_spreadsheet_id', spreadsheetId);
+  }, [spreadsheetId]);
 
   const { isConnected, isThinking, transcript, connect, disconnect, analyserRef, draftBrew, draftBean, updateBrewDraft } = useGeminiLive(loadData);
 
@@ -122,7 +137,8 @@ function App() {
       varietal: '',
       roastLevel: '',
       notes: '',
-      url: ''
+      url: '',
+      roastDate: ''
     });
   };
 
@@ -153,9 +169,41 @@ function App() {
     }
   };
 
+  const handleGoogleAuthenticate = () => {
+    authenticate(googleClientId);
+  };
+
+  const handleGoogleBackup = async () => {
+    if (!spreadsheetId) {
+      alert("Enter Spreadsheet ID in Settings");
+      return;
+    }
+    const success = await backup(spreadsheetId, brewLogs, beans);
+    if (success) {
+      alert("Backup successful!");
+    }
+  };
+
+  const handleGoogleRestore = async () => {
+    if (!spreadsheetId) {
+      alert("Enter Spreadsheet ID in Settings");
+      return;
+    }
+    if (!window.confirm("This will overwrite your local data. Continue?")) return;
+
+    const data = await load(spreadsheetId);
+    if (data) {
+      setBrewLogs(data.logs);
+      setBeans(data.beans);
+      localStorage.setItem('brew_logs', JSON.stringify(data.logs));
+      localStorage.setItem('coffee_beans', JSON.stringify(data.beans));
+      alert("Restore successful!");
+    }
+  };
+
   const handleAddAction = () => {
-      if (activeTab === 'beans') handleAddNewBean();
-      if (activeTab === 'history') handleAddNewLog();
+    if (activeTab === 'beans') handleAddNewBean();
+    if (activeTab === 'history') handleAddNewLog();
   };
 
   return (
@@ -170,68 +218,78 @@ function App() {
     >
       {activeTab === 'assistant' && (
         <AssistantView
-            draftBrew={draftBrew}
-            draftBean={draftBean}
-            beans={beans}
-            onEditDraft={() => setIsEditingDraft(true)}
-            transcript={transcript}
-            isThinking={isThinking}
-            analyserRef={analyserRef}
-            isConnected={isConnected}
+          draftBrew={draftBrew}
+          draftBean={draftBean}
+          beans={beans}
+          onEditDraft={() => setIsEditingDraft(true)}
+          transcript={transcript}
+          isThinking={isThinking}
+          analyserRef={analyserRef}
+          isConnected={isConnected}
         />
       )}
 
       {activeTab === 'beans' && (
         <BeansView
-            beans={beans}
-            onDelete={handleDeleteBean}
-            onEdit={setEditingBean}
-            editingBean={editingBean}
-            setEditingBean={setEditingBean}
-            onSave={handleSaveBean}
+          beans={beans}
+          onDelete={handleDeleteBean}
+          onEdit={setEditingBean}
+          editingBean={editingBean}
+          setEditingBean={setEditingBean}
+          onSave={handleSaveBean}
         />
       )}
 
       {activeTab === 'history' && (
         <HistoryView
-            logs={brewLogs}
-            beans={beans}
-            onDelete={handleDeleteLog}
-            onEdit={setEditingHistoryLog}
-            editingLog={editingHistoryLog}
-            setEditingLog={setEditingHistoryLog}
-            onSave={handleSaveHistoryLog}
+          logs={brewLogs}
+          beans={beans}
+          onDelete={handleDeleteLog}
+          onEdit={setEditingHistoryLog}
+          editingLog={editingHistoryLog}
+          setEditingLog={setEditingHistoryLog}
+          onSave={handleSaveHistoryLog}
         />
       )}
 
       {activeTab === 'settings' && (
         <SettingsView
-            apiKey={apiKey}
-            setApiKey={setApiKey}
-            voice={voice}
-            setVoice={setVoice}
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+          voice={voice}
+          setVoice={setVoice}
+          googleClientId={googleClientId}
+          setGoogleClientId={setGoogleClientId}
+          spreadsheetId={spreadsheetId}
+          setSpreadsheetId={setSpreadsheetId}
+          onAuthenticate={handleGoogleAuthenticate}
+          onBackup={handleGoogleBackup}
+          onLoad={handleGoogleRestore}
+          isGoogleAuthenticated={!!accessToken}
+          isSyncing={isSyncing}
+          syncError={syncError}
         />
       )}
 
       {isEditingDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-app-card w-full max-w-md rounded-3xl border border-app-border p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
-                <button
-                    onClick={() => setIsEditingDraft(false)}
-                    className="absolute top-4 right-4 text-text-muted hover:text-white"
-                >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-                <h2 className="text-xl font-bold text-white mb-6">Edit Draft</h2>
-                <form onSubmit={handleSaveDraft} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                        <DraftEditForm
-                            draftBrew={draftBrew}
-                            beans={beans}
-                            onSave={handleSaveDraft}
-                            onCancel={() => setIsEditingDraft(false)}
-                        />
-                </form>
-            </div>
+          <div className="bg-app-card w-full max-w-md rounded-3xl border border-app-border p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setIsEditingDraft(false)}
+              className="absolute top-4 right-4 text-text-muted hover:text-white"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+            <h2 className="text-xl font-bold text-white mb-6">Edit Draft</h2>
+            <form onSubmit={handleSaveDraft} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+              <DraftEditForm
+                draftBrew={draftBrew}
+                beans={beans}
+                onSave={handleSaveDraft}
+                onCancel={() => setIsEditingDraft(false)}
+              />
+            </form>
+          </div>
         </div>
       )}
 
@@ -245,72 +303,72 @@ import { Button } from './components/ui/Button';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DraftEditForm({ draftBrew, beans }: any) {
-    return (
-        <>
-            <UIInput
-                label="Brewer"
-                name="brewer"
-                defaultValue={draftBrew?.brewer || ''}
-            />
-             <div className="grid grid-cols-2 gap-3">
-                 <UIInput
-                    label="Grinder"
-                    name="grinder"
-                    defaultValue={draftBrew?.grinder || ''}
-                  />
-                 <UIInput
-                    label="Setting"
-                    name="grinderSetting"
-                    defaultValue={draftBrew?.grinderSetting || ''}
-                  />
-            </div>
-            <UISelect
-                label="Bean"
-                name="beanId"
-                defaultValue={draftBrew?.beanId || ''}
-                options={[
-                    { value: '', label: 'Select Bean...' },
-                    ...beans.map((b: Bean) => ({ value: b.id, label: `${b.roastery} - ${b.name}` }))
-                ]}
-            />
-             <div className="grid grid-cols-2 gap-3">
-                 <UIInput
-                    label="Ratio"
-                    name="ratio"
-                    defaultValue={draftBrew?.ratio || ''}
-                  />
-                 <UIInput
-                    label="Temp (°C)"
-                    name="waterTemp"
-                    type="number"
-                    defaultValue={draftBrew?.waterTemp || ''}
-                  />
-            </div>
-             <UITextArea
-                label="Technique"
-                name="technique"
-                defaultValue={draftBrew?.technique || ''}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                 <UIInput
-                    label="Extraction"
-                    name="extraction"
-                    type="number"
-                    step="0.1"
-                    defaultValue={draftBrew?.extraction || ''}
-                  />
-                 <UIInput
-                    label="Enjoyment (1-10)"
-                    name="enjoyment"
-                    type="number"
-                    min="1"
-                    max="10"
-                    defaultValue={draftBrew?.enjoyment || ''}
-                  />
-            </div>
-            <Button type="submit" className="w-full" size="lg">Update Draft</Button>
-        </>
-    )
+  return (
+    <>
+      <UIInput
+        label="Brewer"
+        name="brewer"
+        defaultValue={draftBrew?.brewer || ''}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <UIInput
+          label="Grinder"
+          name="grinder"
+          defaultValue={draftBrew?.grinder || ''}
+        />
+        <UIInput
+          label="Setting"
+          name="grinderSetting"
+          defaultValue={draftBrew?.grinderSetting || ''}
+        />
+      </div>
+      <UISelect
+        label="Bean"
+        name="beanId"
+        defaultValue={draftBrew?.beanId || ''}
+        options={[
+          { value: '', label: 'Select Bean...' },
+          ...beans.map((b: Bean) => ({ value: b.id, label: `${b.roastery} - ${b.name}` }))
+        ]}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <UIInput
+          label="Ratio"
+          name="ratio"
+          defaultValue={draftBrew?.ratio || ''}
+        />
+        <UIInput
+          label="Temp (°C)"
+          name="waterTemp"
+          type="number"
+          defaultValue={draftBrew?.waterTemp || ''}
+        />
+      </div>
+      <UITextArea
+        label="Technique"
+        name="technique"
+        defaultValue={draftBrew?.technique || ''}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <UIInput
+          label="Extraction"
+          name="extraction"
+          type="number"
+          step="0.1"
+          defaultValue={draftBrew?.extraction || ''}
+        />
+        <UIInput
+          label="Enjoyment (1-10)"
+          name="enjoyment"
+          type="number"
+          min="1"
+          max="10"
+          defaultValue={draftBrew?.enjoyment || ''}
+        />
+      </div>
+      <Button type="submit" className="w-full" size="lg">Update Draft</Button>
+    </>
+  )
 }
 
 export default App;

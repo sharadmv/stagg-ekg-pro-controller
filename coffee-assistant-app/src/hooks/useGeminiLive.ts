@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { 
-  GeminiResponse, 
-  BrewAttempt, PartialBrewAttempt, Bean, PartialBean 
+import type {
+  GeminiResponse,
+  BrewAttempt, PartialBrewAttempt, Bean, PartialBean
 } from '../types/gemini';
 
 const SAMPLE_RATE = 16000;
@@ -33,7 +33,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
   const [error, setError] = useState<string | null>(null);
   const [draftBrew, setDraftBrew] = useState<PartialBrewAttempt | null>(null);
   const [draftBean, setDraftBean] = useState<PartialBean | null>(null);
-  
+
   const draftBrewRef = useRef<PartialBrewAttempt | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -47,7 +47,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
       wsRef.current.close();
       wsRef.current = null;
     }
-    activeSourcesRef.current.forEach(s => { try { s.stop(); } catch (e) {} });
+    activeSourcesRef.current.forEach(s => { try { s.stop(); } catch (e) { } });
     activeSourcesRef.current = [];
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -146,10 +146,10 @@ export function useGeminiLive(onDataUpdated?: () => void) {
       ws.onopen = async () => {
         console.log("✅ WebSocket Connected");
         setIsConnected(true);
-        
+
         const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
         audioContextRef.current = ctx;
-        
+
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyserRef.current = analyser;
@@ -160,7 +160,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
         const blob = new Blob([workletCode], { type: 'application/javascript' });
         const workletUrl = URL.createObjectURL(blob);
         await ctx.audioWorklet.addModule(workletUrl);
-        
+
         const node = new AudioWorkletNode(ctx, 'recorder-processor');
         node.port.onmessage = (e) => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -184,7 +184,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
               }
             },
             system_instruction: {
-              parts: [{ text: "You are an expert Coffee Assistant. START THE SESSION by greeting the user and asking which beans from their library they are using for their brew today. 1. When a bean is mentioned, call 'get_saved_beans' first. 2. If no match, ask to add new or clarify. 3. Interactively gather the rest of the brew info (brewer, grinder name, grinder setting, ratio, temp, method, enjoyment). 4. Use 'update_brew_draft' continuously. 5. Never read out IDs. 6. Use 'finish_conversation' when the user is done or says goodbye." }]
+              parts: [{ text: "You are an expert Coffee Assistant. START THE SESSION by greeting the user and asking which beans from their library they are using for their brew today. 1. When a bean is mentioned, call 'get_saved_beans' first. 2. If no match, ask to add new or clarify. 3. Interactively gather the rest of the brew info (brewer, grinder name, grinder setting, ratio, temp, method, enjoyment) or bean info (roastery, name, process, origin, varietal, roast level, notes, roast date). 4. Use 'update_brew_draft' or 'update_bean_draft' continuously. 5. Never read out IDs. 6. Use 'finish_conversation' when the user is done or says goodbye." }]
             },
             tools: [{ 'google_search': {} }, {
               functionDeclarations: [
@@ -210,7 +210,8 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       origin: { type: "string" },
                       varietal: { type: "string" },
                       roastLevel: { type: "string" },
-                      notes: { type: "string" }
+                      notes: { type: "string" },
+                      roastDate: { type: "string" }
                     }
                   }
                 },
@@ -227,7 +228,8 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                       varietal: { type: "string" },
                       roastLevel: { type: "string" },
                       notes: { type: "string" },
-                      url: { type: "string" }
+                      url: { type: "string" },
+                      roastDate: { type: "string" }
                     },
                     required: ["roastery", "name"]
                   }
@@ -282,7 +284,7 @@ export function useGeminiLive(onDataUpdated?: () => void) {
 
         let text = e.data;
         if (text instanceof Blob) text = await text.text();
-        
+
         try {
           const resp: GeminiResponse = JSON.parse(text);
           if (resp.setupComplete) console.log("🎯 Setup Complete");
@@ -296,71 +298,71 @@ export function useGeminiLive(onDataUpdated?: () => void) {
                 // WRAP in an object, server might reject raw array
                 result = { beans: JSON.parse(localStorage.getItem('coffee_beans') || '[]') };
               }
-                            else if (call.name === 'finish_conversation') {
-                              disconnect();
-                              result = { success: true };
-                            }
-                            else if (call.name === 'save_bean') result = saveBean(call.args);
-                            else if (call.name === 'save_brew_log') result = saveBrewLog(call.args);
-                            else if (call.name === 'update_brew_draft') result = updateDraft(call.args);
-                            else if (call.name === 'update_bean_draft') result = updateBeanDraft(call.args);
-                            else result = { error: "Unknown" };
-                            
-                            return { name: call.name, response: result, id: call.id };
-                          }));
-                          
-                          if (wsRef.current?.readyState === WebSocket.OPEN) {
-                            const toolResp = { tool_response: { function_responses: responses } };
-                            console.log("📡 Sending Tool Response:", toolResp);
-                            wsRef.current.send(JSON.stringify(toolResp));
-                          }
-                          setIsThinking(false);
-                        }
-              
-                        if (resp.serverContent) {
-                          const parts = resp.serverContent.modelTurn?.parts;
-                          if (parts) {
-                            parts.forEach(p => {
-                              if (p.text) setTranscript(prev => [...prev, p.text!]);
-                              const audio = p.inline_data || p.inlineData;
-                              if (audio?.data) playAudio(audio.data);
-                            });
-                          }
-                          if (resp.serverContent.interrupted) {
-                            activeSourcesRef.current.forEach(s => { try { s.stop(); } catch (e) {} });
-                            activeSourcesRef.current = [];
-                            nextStartTimeRef.current = audioContextRef.current?.currentTime || 0;
-                          }
-                        }
-                        if (resp.error) {
-                          console.error("❌ Gemini Error:", resp.error);
-                          setError(resp.error.message);
-                        }
-                      } catch (err) {
-                        // If it's not JSON, it might be a partial frame or binary we missed
-                        console.debug("Non-JSON message received");
-                      }
-                    };
-              
-                    ws.onclose = (ev) => {
-                      console.log("🔌 WS Closed:", ev.code, ev.reason);
-                      disconnect();
-                    };
-                    
-                    ws.onerror = (err) => {
-                      console.error("🔌 WS Error:", err);
-                      setError("WebSocket Error");
-                      disconnect();
-                    };
-              
-                  } catch (err: any) {
-                    setError(err.message);
-                    setIsConnected(false);
-                  }
-                }, [disconnect, playAudio, saveBean, saveBrewLog, updateDraft, updateBeanDraft, onDataUpdated]);
-              
-                useEffect(() => { return () => disconnect(); }, [disconnect]);
-              
+              else if (call.name === 'finish_conversation') {
+                disconnect();
+                result = { success: true };
+              }
+              else if (call.name === 'save_bean') result = saveBean(call.args);
+              else if (call.name === 'save_brew_log') result = saveBrewLog(call.args);
+              else if (call.name === 'update_brew_draft') result = updateDraft(call.args);
+              else if (call.name === 'update_bean_draft') result = updateBeanDraft(call.args);
+              else result = { error: "Unknown" };
+
+              return { name: call.name, response: result, id: call.id };
+            }));
+
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              const toolResp = { tool_response: { function_responses: responses } };
+              console.log("📡 Sending Tool Response:", toolResp);
+              wsRef.current.send(JSON.stringify(toolResp));
+            }
+            setIsThinking(false);
+          }
+
+          if (resp.serverContent) {
+            const parts = resp.serverContent.modelTurn?.parts;
+            if (parts) {
+              parts.forEach(p => {
+                if (p.text) setTranscript(prev => [...prev, p.text!]);
+                const audio = p.inline_data || p.inlineData;
+                if (audio?.data) playAudio(audio.data);
+              });
+            }
+            if (resp.serverContent.interrupted) {
+              activeSourcesRef.current.forEach(s => { try { s.stop(); } catch (e) { } });
+              activeSourcesRef.current = [];
+              nextStartTimeRef.current = audioContextRef.current?.currentTime || 0;
+            }
+          }
+          if (resp.error) {
+            console.error("❌ Gemini Error:", resp.error);
+            setError(resp.error.message);
+          }
+        } catch (err) {
+          // If it's not JSON, it might be a partial frame or binary we missed
+          console.debug("Non-JSON message received");
+        }
+      };
+
+      ws.onclose = (ev) => {
+        console.log("🔌 WS Closed:", ev.code, ev.reason);
+        disconnect();
+      };
+
+      ws.onerror = (err) => {
+        console.error("🔌 WS Error:", err);
+        setError("WebSocket Error");
+        disconnect();
+      };
+
+    } catch (err: any) {
+      setError(err.message);
+      setIsConnected(false);
+    }
+  }, [disconnect, playAudio, saveBean, saveBrewLog, updateDraft, updateBeanDraft, onDataUpdated]);
+
+  useEffect(() => { return () => disconnect(); }, [disconnect]);
+
   return {
     isConnected,
     isThinking,
@@ -373,5 +375,4 @@ export function useGeminiLive(onDataUpdated?: () => void) {
     draftBean,
     updateBrewDraft: updateDraft
   };
-              }
-              
+}

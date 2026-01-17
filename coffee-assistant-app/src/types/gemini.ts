@@ -41,6 +41,7 @@ export interface Bean {
   roastLevel?: string;
   notes?: string;
   url?: string;
+  roastDate?: string;
 }
 
 export interface BrewAttempt {

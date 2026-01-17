@@ -20,14 +20,14 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
   return (
     <div className="space-y-6 pb-20">
       <div className="flex items-end justify-between">
-         <h2 className="text-2xl font-bold text-white tracking-tight">Bean Library</h2>
-         <span className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{beans.length} Bags</span>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Bean Library</h2>
+        <span className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{beans.length} Bags</span>
       </div>
 
       {beans.length === 0 && (
         <Card className="py-20 text-center border-dashed border-app-border bg-transparent">
-           <PackageOpen className="w-12 h-12 mx-auto mb-4 text-app-border" />
-           <p className="font-bold text-text-muted uppercase tracking-widest text-xs">No beans saved yet</p>
+          <PackageOpen className="w-12 h-12 mx-auto mb-4 text-app-border" />
+          <p className="font-bold text-text-muted uppercase tracking-widest text-xs">No beans saved yet</p>
         </Card>
       )}
 
@@ -41,7 +41,7 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => onEdit(bean)} icon={<Pencil className="w-3 h-3" />} />
-                <Button variant="ghost" size="sm" onClick={() => { if(window.confirm("Delete?")) onDelete(bean.id) }} className="text-red-500 hover:text-red-400" icon={<Trash2 className="w-3 h-3" />} />
+                <Button variant="ghost" size="sm" onClick={() => { if (window.confirm("Delete?")) onDelete(bean.id) }} className="text-red-500 hover:text-red-400" icon={<Trash2 className="w-3 h-3" />} />
               </div>
             </div>
 
@@ -50,6 +50,7 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
               {bean.process && <Badge variant="default" label="Process">{bean.process}</Badge>}
               {bean.varietal && <Badge variant="default" label="Varietal">{bean.varietal}</Badge>}
               {bean.roastLevel && <Badge variant="default" label="Roast">{bean.roastLevel}</Badge>}
+              {bean.roastDate && <Badge variant="default" label="Roasted">{new Date(bean.roastDate).toLocaleDateString()}</Badge>}
             </div>
 
             {bean.notes && (
@@ -92,31 +93,38 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
             onChange={e => setEditingBean(editingBean ? { ...editingBean, name: e.target.value } : null)}
           />
           <div className="grid grid-cols-2 gap-3">
-             <Input
-                label="Origin"
-                name="origin"
-                value={editingBean?.origin || ''}
-                onChange={e => setEditingBean(editingBean ? { ...editingBean, origin: e.target.value } : null)}
-              />
-             <Input
-                label="Process"
-                name="process"
-                value={editingBean?.process || ''}
-                onChange={e => setEditingBean(editingBean ? { ...editingBean, process: e.target.value } : null)}
-              />
-             <Input
-                label="Varietal"
-                name="varietal"
-                value={editingBean?.varietal || ''}
-                onChange={e => setEditingBean(editingBean ? { ...editingBean, varietal: e.target.value } : null)}
-              />
-             <Input
-                label="Roast"
-                name="roastLevel"
-                value={editingBean?.roastLevel || ''}
-                onChange={e => setEditingBean(editingBean ? { ...editingBean, roastLevel: e.target.value } : null)}
-              />
+            <Input
+              label="Origin"
+              name="origin"
+              value={editingBean?.origin || ''}
+              onChange={e => setEditingBean(editingBean ? { ...editingBean, origin: e.target.value } : null)}
+            />
+            <Input
+              label="Process"
+              name="process"
+              value={editingBean?.process || ''}
+              onChange={e => setEditingBean(editingBean ? { ...editingBean, process: e.target.value } : null)}
+            />
+            <Input
+              label="Varietal"
+              name="varietal"
+              value={editingBean?.varietal || ''}
+              onChange={e => setEditingBean(editingBean ? { ...editingBean, varietal: e.target.value } : null)}
+            />
+            <Input
+              label="Roast"
+              name="roastLevel"
+              value={editingBean?.roastLevel || ''}
+              onChange={e => setEditingBean(editingBean ? { ...editingBean, roastLevel: e.target.value } : null)}
+            />
           </div>
+          <Input
+            label="Roast Date"
+            name="roastDate"
+            type="date"
+            value={editingBean?.roastDate || ''}
+            onChange={e => setEditingBean(editingBean ? { ...editingBean, roastDate: e.target.value } : null)}
+          />
           <TextArea
             label="Notes"
             name="notes"
