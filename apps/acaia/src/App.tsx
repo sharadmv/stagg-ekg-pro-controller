@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { AcaiaScale, AcaiaEventMap } from '@coffee-tools/acaia-sdk'
+import { AcaiaScale } from '@coffee-tools/acaia-sdk'
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -32,7 +32,7 @@ function App() {
     const [isTimerRunning, setIsTimerRunning] = useState(false);
 
     // Chart State
-    const [chartData, setChartData] = useState<{ labels: number[], datasets: any[] }>({
+    const [chartData] = useState<{ labels: number[], datasets: any[] }>({
         labels: [],
         datasets: [{
             label: 'Weight (g)',
