@@ -5,7 +5,7 @@
         "apps/*"
     ],
     "scripts": {
-        "dev": "npm run dev -w @coffee-tools/landing & npm run dev -w @coffee-tools/assistant & npm run dev -w @coffee-tools/stagg",
+        "dev": "npm run dev -w @coffee-tools/landing & npm run dev -w @coffee-tools/assistant & npm run dev -w @coffee-tools/stagg & npm run dev -w @coffee-tools/acaia",
         "build": "npm run build --workspaces --if-present",
         "lint": "npm run lint --workspaces --if-present"
     },

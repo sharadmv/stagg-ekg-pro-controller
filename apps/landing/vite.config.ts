@@ -15,6 +15,10 @@ export default defineConfig({
             '/coffee-tools/coffee_assistant/': {
                 target: 'http://localhost:5174',
                 changeOrigin: true,
+            },
+            '/coffee-tools/acaia/': {
+                target: 'http://localhost:5176',
+                changeOrigin: true,
             }
         }
     }
