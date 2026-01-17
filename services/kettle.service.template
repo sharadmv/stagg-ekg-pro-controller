@@ -1,0 +1,13 @@
+[Unit]
+Description=Coffee Kettle Server
+After=network.target
+
+[Service]
+User={{USER}}
+WorkingDirectory={{WORKING_DIRECTORY}}
+ExecStart={{WORKING_DIRECTORY}}/.venv/bin/python kettle_server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
