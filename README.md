@@ -1,43 +1,30 @@
-# Coffee Tools
+# Coffee Tools - Development Guide
 
-A collection of tools for controlling and monitoring coffee equipment, specifically the Fellow Stagg EKG Pro kettle and Acaia scales.
+The project has been unified into a monorepo structure. This guide explains how to develop locally.
+
+## Development Server
+
+To start all applications simultaneously, run the following from the root:
+
+```bash
+npm run dev
+```
+
+This will start:
+- **Landing Page**: http://localhost:5173/coffee-tools/
+- **Coffee Assistant**: http://localhost:5174/coffee-tools/coffee_assistant/
+- **Stagg Controller**: http://localhost:5175/coffee-tools/stagg/
+
+### Unified Experience
+The **Landing Page** (port 5173) is configured to proxy the other applications. You can access everything through a single entry point:
+👉 **[http://localhost:5173/coffee-tools/](http://localhost:5173/coffee-tools/)**
 
 ## Project Structure
 
-- **Coffee Assistant App:** A modern React/Vite/Tailwind web application located in `coffee-assistant-app/`.
-- **Stagg App:** A standalone PWA-ready web application for kettle control in `stagg-app/`.
+- `apps/landing`: Unified splash page.
+- `apps/assistant`: Gemini-powered coffee assistant.
+- `apps/stagg`: Kettle controller.
 
-## Getting Started
+## Deployment
 
-### Prerequisites
-
-- Python 3.10+
-- Node.js & npm (for the modern web app)
-- Bluetooth-enabled hardware (MacBook, etc.)
-
-### Modern Web App Setup (Coffee Assistant)
-
-1. Navigate to the app directory:
-   ```bash
-   cd coffee-assistant-app
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   The app will be available at `http://localhost:5173`.
-
-## Features
-
-- **Kettle Control:** Scan, connect, and control temperature, schedules, and hold times for Fellow Stagg EKG Pro.
-- **Voice Transcription:** Built-in tool for transcribing brewing notes.
-
-## Development
-
-- `stagg_ekg_pro.py`: Core logic for interacting with the Fellow Stagg EKG Pro via BLE.
+Deployments are handled automatically via GitHub Actions whenever changes are pushed to `main`.
