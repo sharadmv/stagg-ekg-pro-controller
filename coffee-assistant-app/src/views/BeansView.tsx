@@ -16,6 +16,16 @@ interface BeansViewProps {
   onSave: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 
+// Helper to safely format date strings without timezone shifts
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  // new Date("YYYY-MM-DD") treats it as UTC, which shifts in local display.
+  // Using slashes or parsing parts prevents this.
+  const [year, month, day] = dateStr.split('-');
+  if (!year || !month || !day) return new Date(dateStr).toLocaleDateString();
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString();
+};
+
 export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean, onSave }: BeansViewProps) {
   return (
     <div className="space-y-6 pb-20">
@@ -50,7 +60,7 @@ export function BeansView({ beans, onDelete, onEdit, editingBean, setEditingBean
               {bean.process && <Badge variant="default" label="Process">{bean.process}</Badge>}
               {bean.varietal && <Badge variant="default" label="Varietal">{bean.varietal}</Badge>}
               {bean.roastLevel && <Badge variant="default" label="Roast">{bean.roastLevel}</Badge>}
-              {bean.roastDate && <Badge variant="default" label="Roasted">{new Date(bean.roastDate).toLocaleDateString()}</Badge>}
+              {bean.roastDate && <Badge variant="default" label="Roasted">{formatDate(bean.roastDate)}</Badge>}
             </div>
 
             {bean.notes && (
