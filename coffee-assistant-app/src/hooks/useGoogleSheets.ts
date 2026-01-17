@@ -193,7 +193,7 @@ export function useGoogleSheets() {
             await ensureSheetsExist(spreadsheetId);
 
             const brewsResp = await fetchSheetsData(spreadsheetId, 'Brews!A2:K1000');
-            const beansResp = await fetchSheetsData(spreadsheetId, 'Beans!A2:I1000');
+            const beansResp = await fetchSheetsData(spreadsheetId, 'Beans!A2:J1000');
 
             const logs: BrewAttempt[] = (brewsResp.values || []).map((row: any[]) => ({
                 id: row[0],
