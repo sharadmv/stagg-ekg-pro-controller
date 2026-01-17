@@ -1,5 +1,6 @@
 import React from 'react';
-import { Coffee, Mic, MicOff, Settings, List, Book, Plus } from 'lucide-react';
+import { Coffee, Mic, Square, Settings, List, Book, Plus } from 'lucide-react';
+import FloatingVisualizer from './FloatingVisualizer';
 
 type Tab = 'assistant' | 'history' | 'beans' | 'settings';
 
@@ -22,6 +23,7 @@ export function Layout({
   isThinking,
   onConnectToggle,
   onAddAction,
+  analyserRef,
 }: LayoutProps) {
 
   return (
@@ -30,7 +32,7 @@ export function Layout({
       <header className="px-6 py-4 flex items-center justify-between sticky top-0 z-50 bg-app-bg/80 backdrop-blur-xl border-b border-app-border">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-coffee-gold/10 flex items-center justify-center">
-             <Coffee className="w-4 h-4 text-coffee-gold" />
+            <Coffee className="w-4 h-4 text-coffee-gold" />
           </div>
           <h1 className="text-lg font-bold tracking-tight">Coffee Assistant</h1>
         </div>
@@ -39,7 +41,7 @@ export function Layout({
             {isConnected ? (isThinking ? 'Thinking...' : 'Live') : 'Idle'}
           </div>
           {isConnected && (
-             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
           )}
         </div>
       </header>
@@ -47,7 +49,7 @@ export function Layout({
       {/* Main Content */}
       <main className="flex-1 pb-32 overflow-y-auto overflow-x-hidden">
         <div className="max-w-md mx-auto w-full px-4 pt-6">
-            {children}
+          {children}
         </div>
       </main>
 
@@ -56,23 +58,22 @@ export function Layout({
 
         {/* Action Button */}
         <div className="absolute bottom-24 right-6 pointer-events-auto">
-            {activeTab === 'assistant' ? (
-                 <button
-                 onClick={onConnectToggle}
-                 className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 ${
-                   isConnected ? 'bg-red-500/90 hover:bg-red-500' : 'bg-coffee-gold hover:bg-[#c69363]'
-                 }`}
-               >
-                 {isConnected ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
-               </button>
-            ) : (
-                <button
-                onClick={onAddAction}
-                className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 bg-coffee-gold hover:bg-[#c69363]"
-              >
-                <Plus className="w-6 h-6 text-white" />
-              </button>
-            )}
+          {activeTab === 'assistant' ? (
+            <button
+              onClick={onConnectToggle}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 ${isConnected ? 'bg-red-500/90 hover:bg-red-500' : 'bg-coffee-gold hover:bg-[#c69363]'
+                }`}
+            >
+              {isConnected ? <Square className="w-5 h-5 text-white fill-white" /> : <Mic className="w-6 h-6 text-white" />}
+            </button>
+          ) : (
+            <button
+              onClick={onAddAction}
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 bg-coffee-gold hover:bg-[#c69363]"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          )}
         </div>
 
         {/* Bottom Navigation */}
@@ -103,22 +104,30 @@ export function Layout({
           />
         </nav>
       </div>
+
+      {/* Floating Visualizer when not on Chat tab but connected */}
+      {activeTab !== 'assistant' && isConnected && (
+        <FloatingVisualizer
+          analyserRef={analyserRef}
+          onClick={() => onTabChange('assistant')}
+        />
+      )}
     </div>
   );
 }
 
 function NavButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all duration-300 w-16 ${active ? 'text-coffee-gold' : 'text-text-muted hover:text-white'}`}
-        >
-            <div className={`transition-transform duration-300 ${active ? 'scale-110' : ''}`}>
-                {icon}
-            </div>
-            <span className={`text-[9px] font-bold uppercase tracking-wider transition-opacity duration-300 ${active ? 'opacity-100' : 'opacity-60'}`}>
-                {label}
-            </span>
-        </button>
-    )
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all duration-300 w-16 ${active ? 'text-coffee-gold' : 'text-text-muted hover:text-white'}`}
+    >
+      <div className={`transition-transform duration-300 ${active ? 'scale-110' : ''}`}>
+        {icon}
+      </div>
+      <span className={`text-[9px] font-bold uppercase tracking-wider transition-opacity duration-300 ${active ? 'opacity-100' : 'opacity-60'}`}>
+        {label}
+      </span>
+    </button>
+  )
 }
