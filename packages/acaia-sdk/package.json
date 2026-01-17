@@ -1,0 +1,25 @@
+{
+    "name": "@coffee-tools/acaia-sdk",
+    "version": "1.0.0",
+    "description": "TypeScript SDK for Acaia Scales (Pearl, Lunar)",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+    },
+    "keywords": [
+        "acaia",
+        "coffee",
+        "scale",
+        "bluetooth",
+        "web-bluetooth"
+    ],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0"
+    }
+}

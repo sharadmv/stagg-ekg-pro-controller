@@ -2,7 +2,8 @@
     "name": "coffee-tools",
     "private": true,
     "workspaces": [
-        "apps/*"
+        "apps/*",
+        "packages/*"
     ],
     "scripts": {
         "dev": "npm run dev -w @coffee-tools/landing & npm run dev -w @coffee-tools/assistant & npm run dev -w @coffee-tools/stagg & npm run dev -w @coffee-tools/acaia",
