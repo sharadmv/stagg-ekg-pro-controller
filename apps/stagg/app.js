@@ -15,9 +15,9 @@ const MAIN_CONFIG_UUID = '2291c4b5-5d7f-4477-a88b-b266edb97142';
 // Known Service UUIDs to try (since we need to specify services in WebBluetooth to access them)
 const OPTIONAL_SERVICES = [
     '7aebf330-6cb1-46e4-b23b-7cc2262c605e', // Discovered Service UUID
-    'b4df5a1c-3f6b-f4bf-ea4a-820304901a02', 
+    'b4df5a1c-3f6b-f4bf-ea4a-820304901a02',
     '00001820-0000-1000-8000-00805f9b34fb',
-    MAIN_CONFIG_UUID 
+    MAIN_CONFIG_UUID
 ];
 
 // Payload Offsets
@@ -58,6 +58,9 @@ class StaggEKGPro {
 
     async requestDevice() {
         console.log('Action: Requesting Bluetooth device...');
+        if (!navigator.bluetooth) {
+            throw new Error('Web Bluetooth is not supported in this browser or context. Please ensure you are using a compatible browser (like Chrome/Edge) and accessing the app over HTTPS or localhost.');
+        }
         this.device = await navigator.bluetooth.requestDevice({
             filters: [
                 { namePrefix: 'Stagg' },
@@ -65,7 +68,7 @@ class StaggEKGPro {
                 { namePrefix: 'EKG' }
             ],
             optionalServices: OPTIONAL_SERVICES,
-            acceptAllDevices: false 
+            acceptAllDevices: false
         });
         console.log('Action: Device selected:', this.device.name);
         this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
@@ -73,13 +76,13 @@ class StaggEKGPro {
 
     async connectGatt() {
         if (!this.device) throw new Error("No device selected");
-        
+
         console.log('Action: Connecting to GATT Server...');
         this.server = await this.device.gatt.connect();
 
         console.log('Action: Getting Service...');
         let service = null;
-        
+
         for (const uuid of OPTIONAL_SERVICES) {
             try {
                 service = await this.server.getPrimaryService(uuid);
@@ -87,7 +90,7 @@ class StaggEKGPro {
                 try {
                     this.characteristic = await service.getCharacteristic(MAIN_CONFIG_UUID);
                     console.log('Action: Found characteristic:', MAIN_CONFIG_UUID);
-                    break; 
+                    break;
                 } catch (e) {
                     console.log(`Action: Characteristic not in service ${uuid}`);
                     service = null;
@@ -109,7 +112,7 @@ class StaggEKGPro {
         console.log('Action: Reading initial state...');
         const value = await this.characteristic.readValue();
         this.updateState(value);
-        
+
         return true;
     }
 
@@ -141,13 +144,13 @@ class StaggEKGPro {
     updateState(dataView) {
         this.stateData = new Uint8Array(dataView.buffer);
         this.counter = this.stateData[Payload.COUNTER];
-        
+
         // Parse state
         const state = this.parseState(this.stateData);
         state.connected = true;
-        
+
         // Debug log
-        const hex = [...this.stateData].map(b => b.toString(16).padStart(2,'0')).join(' ');
+        const hex = [...this.stateData].map(b => b.toString(16).padStart(2, '0')).join(' ');
         document.getElementById('debug-log').innerText = hex;
 
         if (this.onStateChange) this.onStateChange(state);
@@ -192,12 +195,12 @@ class StaggEKGPro {
 
     async writeState(newData) {
         if (!this.characteristic) return;
-        
+
         // Update counter
         this.counter = (this.counter + 1) & 0xFF;
         newData[Payload.COUNTER] = this.counter;
 
-        const hex = [...newData].map(b => b.toString(16).padStart(2,'0')).join(' ');
+        const hex = [...newData].map(b => b.toString(16).padStart(2, '0')).join(' ');
         console.log('Action: Writing state to device:', hex);
 
         try {
@@ -230,7 +233,7 @@ class StaggEKGPro {
     async setSchedule(mode, hour, minute, tempC) {
         if (!this.stateData) return;
         console.log(`Action: Setting schedule - Mode: ${mode}, Time: ${hour}:${minute}, Temp: ${tempC}°C`);
-        
+
         // Implementation mirrors Python logic
         // If mode is OFF
         if (mode === 'off') {
@@ -248,16 +251,16 @@ class StaggEKGPro {
         // but the Python code does it. Let's do it simply: just write the new state)
         // Actually, Python says "Changing between ONCE and DAILY requires a two-step BLE write."
         // We'll implement the disable-first if switching modes.
-        
+
         // For now, let's just write the target state. The firmware might handle it or we might need the 2-step.
         // Let's do the single write first for simplicity.
-        
+
         const newData = new Uint8Array(this.stateData);
         newData[Payload.STATUS_FLAGS] |= Flags.SCHEDULE_ENABLED;
         newData[Payload.SCHEDULE_TEMP] = Math.round(tempC * 2);
         newData[Payload.SCHEDULE_HOURS] = hour;
         newData[Payload.SCHEDULE_MINUTES] = minute;
-        
+
         if (mode === 'once') {
             newData[Payload.COUNTER] |= Flags.SCHEDULE_MODE;
         } else {
@@ -309,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     methodsToLog.forEach(methodName => {
         const originalMethod = kettle[methodName];
-        kettle[methodName] = async function(...args) {
+        kettle[methodName] = async function (...args) {
             logToDebug(methodName, ...args);
             return originalMethod.apply(this, args);
         };
@@ -325,10 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
         disconnectBtn: document.getElementById('disconnect-btn'),
         refreshBtn: document.getElementById('refresh-btn'),
         errorMsg: document.getElementById('error-msg'),
-        
+
         tempDisplay: document.getElementById('display-target-temp'),
         tempSlider: document.getElementById('temp-slider'),
-        
+
         schedMode: document.getElementById('schedule-mode'),
         schedTime: document.getElementById('sched-time'),
         schedH: document.getElementById('sched-h'),
@@ -336,12 +339,12 @@ document.addEventListener('DOMContentLoaded', () => {
         schedTemp: document.getElementById('schedule-temp'),
         schedTempDisplay: document.getElementById('display-schedule-temp'),
         saveSchedBtn: document.getElementById('save-schedule-btn'),
-        
+
         holdTime: document.getElementById('hold-time'),
         setHoldBtn: document.getElementById('set-hold-btn'),
 
         turnOnBtn: document.getElementById('turn-on-btn'),
-        
+
         infoAlt: document.getElementById('info-altitude'),
         infoLang: document.getElementById('info-language'),
         infoClock: document.getElementById('info-clock'),
@@ -387,15 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Populate UI
-            if (els.lastSchedTime) els.lastSchedTime.innerText = `${String(data.hour).padStart(2,'0')}:${String(data.minute).padStart(2,'0')}`;
+            if (els.lastSchedTime) els.lastSchedTime.innerText = `${String(data.hour).padStart(2, '0')}:${String(data.minute).padStart(2, '0')}`;
             if (els.lastSchedTemp) els.lastSchedTemp.innerText = `${data.temperature_celsius}°C`;
             if (els.lastSchedMode) {
                 els.lastSchedMode.innerText = data.mode;
-                els.lastSchedMode.className = `text-[10px] font-medium uppercase tracking-wider mt-1 px-2 py-0.5 rounded inline-block border ${
-                    data.mode === 'daily'
-                    ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
-                    : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
-                }`;
+                els.lastSchedMode.className = `text-[10px] font-medium uppercase tracking-wider mt-1 px-2 py-0.5 rounded inline-block border ${data.mode === 'daily'
+                        ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+                        : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                    }`;
             }
 
             // Show Card
@@ -409,9 +411,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Last Schedule UI
     updateLastScheduleUI();
 
+    // Check for Web Bluetooth Support
+    if (!navigator.bluetooth) {
+        console.warn('Web Bluetooth not supported.');
+        if (els.errorMsg) {
+            els.errorMsg.innerText = 'Web Bluetooth is not supported in this browser or context. Use a Chromium-based browser (Chrome, Edge) and ensure you are using HTTPS or localhost.';
+            els.errorMsg.classList.remove('hidden');
+        }
+        if (els.connectBtn) {
+            els.connectBtn.disabled = true;
+            els.connectBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            els.connectBtn.innerText = 'Bluetooth Unsupported';
+        }
+    }
+
     if (els.applyLastSchedBtn) {
         els.applyLastSchedBtn.addEventListener('click', async () => {
-             try {
+            try {
                 const raw = localStorage.getItem(LAST_SCHED_KEY);
                 if (!raw) return;
                 const data = JSON.parse(raw);
@@ -475,16 +491,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isConnecting) {
             // Fade out scan content but keep it in DOM to maintain height
             els.scanContent.classList.add('opacity-0', 'pointer-events-none');
-            
+
             els.connectingContent.classList.remove('hidden');
             // small delay to allow display:block to apply before opacity transition
             setTimeout(() => els.connectingContent.classList.remove('opacity-0'), 50);
-            
+
             if (statusText && els.connectingStatus) els.connectingStatus.innerText = statusText;
         } else {
             els.connectingContent.classList.add('opacity-0');
             setTimeout(() => els.connectingContent.classList.add('hidden'), 300);
-            
+
             // Fade scan content back in
             els.scanContent.classList.remove('hidden'); // Safety check
             setTimeout(() => els.scanContent.classList.remove('opacity-0', 'pointer-events-none'), 50);
@@ -496,24 +512,24 @@ document.addEventListener('DOMContentLoaded', () => {
         els.connectBtn.addEventListener('click', async () => {
             console.log('UI Action: Connect button clicked');
             if (els.errorMsg) els.errorMsg.classList.add('hidden');
-            
+
             // We don't show connecting UI immediately for WebBluetooth because the picker needs to be seen first.
             // But we can show "Requesting Permission..." or similar?
             // Actually, showing it *after* they select is better UX, but we can't detect "selection" easily until `requestDevice` returns.
             // So we'll show it after `requestDevice` returns (which means they picked something).
-            
+
             try {
                 // 1. Picker Phase
                 console.log('UI Action: Requesting Bluetooth Device...');
-                await kettle.requestDevice(); 
-                
+                await kettle.requestDevice();
+
                 // 2. Connecting Phase (User selected device)
                 updateUIConnecting(true, "Negotiating Link...");
-                
+
                 await kettle.connectGatt();
                 updateUIConnected(true);
                 updateUIConnecting(false); // Hide connecting view
-                
+
             } catch (e) {
                 console.error('UI Action: Connection failed', e);
                 if (els.errorMsg) {
@@ -621,13 +637,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('UI Action: Save Schedule button clicked');
             try {
                 let h = 0, m = 0;
-                
+
                 if (els.schedTime) {
-                     const parts = els.schedTime.value.split(':');
-                     if (parts.length === 2) {
-                         h = parseInt(parts[0], 10);
-                         m = parseInt(parts[1], 10);
-                     }
+                    const parts = els.schedTime.value.split(':');
+                    if (parts.length === 2) {
+                        h = parseInt(parts[0], 10);
+                        m = parseInt(parts[1], 10);
+                    }
                 } else if (els.schedH && els.schedM) {
                     h = parseInt(els.schedH.value, 10);
                     m = parseInt(els.schedM.value, 10);
@@ -635,10 +651,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const mode = els.schedMode ? els.schedMode.value : 'off';
                 const temp = els.schedTemp ? parseFloat(els.schedTemp.value) : 85;
-                
+
                 console.log(`UI Action: Saving schedule - Mode: ${mode}, Time: ${h}:${m}, Temp: ${temp}°C`);
                 await kettle.setSchedule(mode, h, m, temp);
-                
+
                 // Save to LocalStorage
                 if (mode !== 'off') {
                     const saveData = {
@@ -694,9 +710,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Info
         if (els.infoAlt) els.infoAlt.innerText = state.altitude_meters;
-        if (els.infoLang) els.infoLang.innerText = ['English','French','Spanish','Chinese Simp','Chinese Trad'][state.language] || 'Unknown';
-        if (els.infoClock) els.infoClock.innerText = `${String(state.clock.hour).padStart(2,'0')}:${String(state.clock.minute).padStart(2,'0')}`;
-        
+        if (els.infoLang) els.infoLang.innerText = ['English', 'French', 'Spanish', 'Chinese Simp', 'Chinese Trad'][state.language] || 'Unknown';
+        if (els.infoClock) els.infoClock.innerText = `${String(state.clock.hour).padStart(2, '0')}:${String(state.clock.minute).padStart(2, '0')}`;
+
         // Sync Schedule
         if (state.schedule) {
             if (els.schedMode && document.activeElement !== els.schedMode) {
@@ -709,18 +725,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle New Input
             if (els.schedTime && document.activeElement !== els.schedTime) {
-                els.schedTime.value = `${String(state.schedule.hour).padStart(2,'0')}:${String(state.schedule.minute).padStart(2,'0')}`;
+                els.schedTime.value = `${String(state.schedule.hour).padStart(2, '0')}:${String(state.schedule.minute).padStart(2, '0')}`;
             }
             // Handle Old Inputs (Fallback)
             if (els.schedH && els.schedM && document.activeElement !== els.schedH && document.activeElement !== els.schedM) {
-                els.schedH.value = String(state.schedule.hour).padStart(2,'0');
-                els.schedM.value = String(state.schedule.minute).padStart(2,'0');
+                els.schedH.value = String(state.schedule.hour).padStart(2, '0');
+                els.schedM.value = String(state.schedule.minute).padStart(2, '0');
             }
         }
-        
+
         // Hold Time
         if (els.holdTime && document.activeElement !== els.holdTime) {
-            let closest = [0, 15, 30, 45, 60].reduce((prev, curr) => 
+            let closest = [0, 15, 30, 45, 60].reduce((prev, curr) =>
                 Math.abs(curr - state.hold_time_minutes) < Math.abs(prev - state.hold_time_minutes) ? curr : prev
             );
             els.holdTime.value = closest;
